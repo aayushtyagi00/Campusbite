@@ -2,6 +2,7 @@ import "server-only";
 
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { portalOrigin } from "../auth-redirect";
 import { cookies } from "next/headers";
 import type { StaffDatabase } from "./database";
 
@@ -10,15 +11,7 @@ export const staffOAuthCookieName = "campusbite-staff-oauth";
 export const staffOAuthAreaCookie = staffOAuthCookieName + "-portal";
 export const isStaffCookie = (name: string) => name === staffCookieName || name.startsWith(staffCookieName + ".");
 
-export function staffOrigin() {
-  try {
-    const origin = new URL(process.env.CAMPUSBITE_STAFF_ORIGIN?.trim() ?? "");
-    const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(origin.hostname);
-    if (origin.pathname !== "/" || origin.search || origin.hash || origin.username || origin.password) return null;
-    if (origin.protocol === "https:" || (loopback && origin.protocol === "http:")) return origin.origin;
-  } catch { /* Google sign-in requires an explicitly configured site origin. */ }
-  return null;
-}
+export const staffOrigin = () => portalOrigin("staff");
 
 export function staffSettings() {
   const url = process.env.SUPABASE_URL?.trim();

@@ -1,6 +1,7 @@
 import { ClipboardList, Gauge, LayoutGrid, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { staffSignOut } from "@/lib/staff/actions";
+import { liveCommerce } from "@/lib/student-auth";
 import { Brand } from "./ui";
 
 const links = {
@@ -20,6 +21,9 @@ export function OpsShell({ area, path, email, children }: { area: keyof typeof l
       <span className="eyebrow ops-area">{area === "vendor" ? "Vendor workspace" : "Admin workspace"}</span>
       <nav aria-label={area === "vendor" ? "Vendor navigation" : "Admin navigation"}>
         {links[area].map(([href, label, Icon]) => <Link key={href} href={href} aria-current={path === href ? "page" : undefined}><Icon size={18} />{label}</Link>)}
+        {area === "admin" && liveCommerce() && <Link href="/admin/orders" aria-current={path === "/admin/orders" ? "page" : undefined}>
+          <LayoutGrid size={18} /> Commerce operations
+        </Link>}
       </nav>
       <Link className="text-link ops-return" href={area === "vendor" ? "/vendor" : "/"}>{area === "vendor" ? "Vendor homepage" : "Student website"}</Link>
       <form action={staffSignOut} className="ops-sign-out"><button className="button secondary compact">Sign out</button></form>

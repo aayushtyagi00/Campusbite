@@ -2,15 +2,17 @@ import Link from "next/link";
 import { money, statuses } from "@/lib/campus";
 import { vendorRoles, type VendorOrder, type VendorRole, type VendorSale, type VendorShop } from "@/lib/staff/database";
 import { Empty, Status } from "./ui";
+import { VendorBoardRefresh, VendorOrderControls } from "./vendor-order-controls";
 
 const campusDate = new Intl.DateTimeFormat("en-IN", {
   dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata",
 });
 
-export function ShopDashboard({ shop, shops, role, orders, sales }: {
-  shop: VendorShop; shops: VendorShop[]; role: VendorRole; orders: VendorOrder[]; sales?: VendorSale[];
+export function ShopDashboard({ shop, shops, role, orders, sales, live }: {
+  shop: VendorShop; shops: VendorShop[]; role: VendorRole; orders: VendorOrder[]; sales?: VendorSale[]; live: boolean;
 }) {
   return <>
+    {live && <VendorBoardRefresh />}
     <div className="ops-heading"><div><h1>{shop.name}</h1><p>Shop dashboard · Campus times in IST</p></div><Status tone="good">{vendorRoles[role]}</Status></div>
     {shops.length > 1 && <nav aria-label="Your shops" className="chips staff-records">
       {shops.map(item => <Link key={item.id} className={`button compact${item.id === shop.id ? "" : " secondary"}`}
@@ -20,6 +22,11 @@ export function ShopDashboard({ shop, shops, role, orders, sales }: {
       <h2>Recent shop orders</h2>
       {orders.length ? <ul className="stack">{orders.map(order => <li className="staff-data-row" key={order.id}>
         <strong>{order.reference}</strong><time dateTime={order.pickup_at}>{campusDate.format(new Date(order.pickup_at))}</time><Status>{statuses[order.status]}</Status>
+        {live && <div className="stack">
+          {order.items?.map((item, index) => <p key={index}>{item.qty} × {item.name}</p>)}
+          {order.preparation_note && <p>{order.preparation_note}</p>}
+          <VendorOrderControls id={order.id} status={order.status} />
+        </div>}
       </li>)}</ul> : <Empty title="No orders recorded for this shop" />}
     </section>
     {sales !== undefined && <section className="panel panel-pad stack staff-records">

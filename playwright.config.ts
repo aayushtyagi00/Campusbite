@@ -1,6 +1,6 @@
 import { defineConfig } from "@playwright/test";
 
-const baseURL = "http://127.0.0.1:3000";
+const baseURL = "http://127.0.0.1:3108";
 
 export default defineConfig({
   testDir: "./tests",
@@ -11,10 +11,28 @@ export default defineConfig({
     viewport: { width: 390, height: 844 },
     launchOptions: { executablePath: process.env.CAMPUSBITE_TEST_BROWSER || undefined },
   },
-  webServer: {
-    command: "node ./node_modules/next/dist/bin/next dev --webpack --hostname 127.0.0.1 --port 3000",
+  webServer: [{
+    command: "node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3108",
+    env: { CAMPUSBITE_MODE: "preview", SUPABASE_URL: "http://127.0.0.1:3110", SUPABASE_PUBLISHABLE_KEY: "test-key", SUPABASE_SECRET_KEY: "test-server-key", STUDENT_SUPABASE_URL: "", STUDENT_SUPABASE_PUBLISHABLE_KEY: "" },
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
-  },
+  }, {
+    command: "node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3109",
+    url: "http://127.0.0.1:3109/auth/student/callback",
+    env: {
+      CAMPUSBITE_MODE: "live",
+      CAMPUSBITE_STAFF_ORIGIN: "http://127.0.0.1:3000",
+      VERCEL_ENV: "production",
+      VERCEL_PROJECT_PRODUCTION_URL: "campusbite-lpu.vercel.app",
+      CAMPUSBITE_STUDENT_ORIGIN: "",
+      STUDENT_SUPABASE_URL: "",
+      STUDENT_SUPABASE_PUBLISHABLE_KEY: "",
+      SUPABASE_URL: "http://127.0.0.1:3110",
+      SUPABASE_PUBLISHABLE_KEY: "test-publishable-key",
+      SUPABASE_SECRET_KEY: "test-server-key",
+    },
+    reuseExistingServer: false,
+    timeout: 120_000,
+  }],
 });

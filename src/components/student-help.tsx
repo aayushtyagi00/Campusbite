@@ -9,11 +9,11 @@ const pages = {
   },
   "pickup-refunds": {
     title: "Pickup & Refunds",
-    intro: "How pickup windows, cancellation, and refund status work in the CampusBite preview.",
+    intro: "How pickup windows, cancellation, and refund status work.",
   },
   "privacy-policy": {
     title: "Privacy Policy",
-    intro: "How the current CampusBite preview handles your information.",
+    intro: "How CampusBite handles your information.",
   },
 } as const;
 
@@ -42,15 +42,19 @@ export function StudentHelp({ section }: { section: keyof typeof pages }) {
       </section>
       <section className="panel panel-pad stack">
         <h2>Cancellation and refunds</h2>
-        <p>While the vendor is deciding whether to accept, you can cancel from your order details. A cancellation, vendor rejection, or expired acceptance window creates a refund request in the preview.</p>
-        <p>Payments and refunds are simulated. My Orders shows the current preview refund status.</p>
+        <p>While the vendor is deciding whether to accept, you can cancel from your order details. A cancellation, vendor rejection, or expired acceptance window creates a refund request for a paid order.</p>
+        <p>Refunds go back through Razorpay. Check My Orders for the current status.</p>
         <Link className="text-link" href="/support">Get help with an order</Link>
       </section>
     </>}
     {section === "privacy-policy" && <>
       <section className="panel panel-pad stack">
         <h2>Browser storage</h2>
-        <p>The preview stores your cart, selected food court, sample profile, orders, and preferences in your browser. Clearing site data removes that browser’s local preview information.</p>
+        <p>CampusBite stores your cart and selected food court in your browser. A session cookie keeps you signed in.</p>
+      </section>
+      <section className="panel panel-pad stack">
+        <h2>Accounts, orders and payments</h2>
+        <p>Supabase manages student sign-in. CampusBite stores order and support records under your account and shares preparation details with the shop fulfilling the order. Razorpay handles payment details. CampusBite records payment references and refund status.</p>
       </section>
       <section className="panel panel-pad stack">
         <h2>Public reviews</h2>

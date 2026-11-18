@@ -4,8 +4,8 @@ import { ArrowRight, Check, ChevronDown, Home, MapPin, ReceiptText, ShoppingBag,
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { cartItems, update, usePreview, usePreviewReady } from "@/lib/preview";
-import { foodCourts, money } from "@/lib/campus";
+import { cartItems, LiveStorefronts, update, usePreview, usePreviewReady } from "@/lib/preview";
+import { foodCourts, money, type Product, type Stall } from "@/lib/campus";
 import { Brand } from "./ui";
 import { StudentFooter } from "./student-footer";
 
@@ -21,7 +21,6 @@ const mobileNavigation = [
 ];
 
 function ProfileMenu({ selectCourt }: { selectCourt: () => void }) {
-  const { student } = usePreview();
   const profile = useRef<HTMLDetailsElement>(null);
   const trigger = useRef<HTMLElement>(null);
   function close() { if (profile.current) profile.current.open = false; }
@@ -43,17 +42,21 @@ function ProfileMenu({ selectCourt }: { selectCourt: () => void }) {
     <summary ref={trigger} className="header-action profile-trigger"><UserRound size={17} /> Profile <ChevronDown size={14} /></summary>
     <div className="profile-popover">
       <div className="profile-identity">
-        <span className="profile-avatar" aria-hidden="true">{student?.name.trim().charAt(0).toUpperCase() || <UserRound size={19} />}</span>
-        <div><strong>{student?.name || "Guest"}</strong><small>{student?.email || "CampusBite student account"}</small></div>
+        <span className="profile-avatar" aria-hidden="true"><UserRound size={19} /></span>
+        <div><strong>CampusBite account</strong><small>CampusBite ordering</small></div>
       </div>
       <Link href="/orders" onClick={close}><ReceiptText size={19} /><span><strong>My orders</strong><small>Track pickup and view order history</small></span></Link>
       <button type="button" onClick={() => { close(); selectCourt(); }}><MapPin size={19} /><span><strong>Select Food Court</strong><small>Change your campus pickup area</small></span></button>
-      <Link href={student ? "/account" : "/sign-in"} onClick={close}><UserRound size={19} /><span><strong>{student ? "My account" : "Sign in or register"}</strong><small>{student ? "Manage your profile and preferences" : "Access your student account"}</small></span></Link>
+      <Link href="/account" onClick={close}><UserRound size={19} /><span><strong>My account</strong><small>Manage your account</small></span></Link>
     </div>
   </details>;
 }
 
-export function StudentShell({ children }: { children: React.ReactNode }) {
+export function StudentShell({ children, storefronts }: { children: React.ReactNode; storefronts?: { stalls: Stall[]; products: Product[] } }) {
+  return <LiveStorefronts.Provider value={storefronts}><StudentNavigation>{children}</StudentNavigation></LiveStorefronts.Provider>;
+}
+
+function StudentNavigation({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const data = usePreview();
   const ready = usePreviewReady();

@@ -286,6 +286,7 @@ svg { flex-shrink: 0; }
 .slot-option:has(:checked) { background: var(--pale); border-color: var(--button); color: var(--green); font-weight: 720; }
 .order-line + .order-line, .total { padding-top: .7rem; border-top: 1px solid var(--border); }
 .transaction-column > .panel, .transaction-column > .button, .transaction-column > .notice { margin-block: 1rem; }
+.order-card { text-align: start; }
 .order-card:hover { border-color: var(--button); }
 .ready-panel { background: #ecf9f2; }
 .pickup-code { display: grid; justify-items: center; text-align: center; gap: .2rem; padding: 1rem .4rem; border: 1px dashed #5e9080; border-radius: 14px; color: var(--green); background: white; }

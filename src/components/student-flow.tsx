@@ -1,29 +1,68 @@
 "use client";
 
-import { ArrowRight, CalendarClock, Check, Clock3, CreditCard, MapPin, PackageCheck, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarClock, Check, Clock3, CreditCard, MapPin, PackageCheck, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clockTime, dateLabel, money, pickupSlots, slotLabel, statuses } from "@/lib/campus";
-import { acknowledgePrices, cartItems, changeOrder, createPreviewOrder, previewTime, update, updateCheckout, useClock, useOrderExpiry, usePreview, visibleStatus } from "@/lib/preview";
+import { acknowledgePrices, cartItems, clearPreviewCheckout, previewTime, updateCheckout, useClock, usePreview, visibleStatus } from "@/lib/preview";
+import { confirmLiveCheckout, startLiveCheckout, updateLiveStudentOrder } from "@/lib/commerce-actions";
+import { selectedStudentOrder, selectStudentOrder, type StudentOrder, type StudentOrderHistory } from "@/lib/student-order-types";
 import { Quantity } from "./quantity";
 import { Back, Empty, Notice, Status } from "./ui";
 
-export function Checkout({ checkout = false }: { checkout?: boolean }) {
+type PaymentResponse = { razorpay_payment_id: string; razorpay_signature: string };
+type RazorpayCheckout = new (options: {
+  key: string; order_id: string; amount: number; currency: string; name: string;
+  handler: (payment: PaymentResponse) => void; modal: { ondismiss: () => void };
+}) => { open: () => void };
+const liveCheckoutKey = "campusbite.checkout.request";
+
+function liveCheckoutRequest(basket: string) {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(liveCheckoutKey) ?? "null");
+    if (saved?.basket === basket && typeof saved.id === "string") return saved.id as string;
+  } catch { /* Checkout remains usable without tab storage. */ }
+  const id = crypto.randomUUID();
+  try { sessionStorage.setItem(liveCheckoutKey, JSON.stringify({ basket, id })); } catch { /* Use the in-memory request. */ }
+  return id;
+}
+
+function clearLiveCheckoutRequest() {
+  try { sessionStorage.removeItem(liveCheckoutKey); } catch { /* The tab has no storage. */ }
+}
+
+export function Checkout({ checkout = false, history }: { checkout?: boolean; history?: StudentOrderHistory }) {
   const data = usePreview();
   const router = useRouter();
-  const now = previewTime(data, useClock());
+  const clock = useClock();
+  const live = Boolean(data.live);
+  const now = live ? clock : previewTime(data, clock);
   const { start: selected, note } = data.checkout;
   const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
+  const [gatewayReady, setGatewayReady] = useState(false);
+  const checkoutRequest = useRef<string | null>(null);
   const items = cartItems(data);
   const stall = data.stalls.find(item => item.id === items[0]?.stall);
   const unavailable = items.some(item => item.soldOut || item.archived);
-  const slots = now && stall && !data.orderingPaused && !unavailable ? pickupSlots(stall, items, data.orders, now) : [];
+  const slots = now && stall && !data.orderingPaused && !unavailable
+    ? pickupSlots(stall, items, history?.orders ?? [], live ? now + 60_000 : now, clock).filter(slot => !live || slot.start <= now + 3_600_000)
+    : [];
   const pricesChanged = items.some(item => item.priceChanged);
   const canSubmit = slots.some(slot => slot.start === selected) && !pricesChanged;
   const subtotal = items.reduce((sum, item) => sum + item.qty * item.price, 0);
   if (!stall || !items.length) return <div className="narrow"><h1>Your bag</h1><Empty title="Your bag is empty"><Link className="button" href="/">Browse stalls</Link></Empty></div>;
+  function openOrder(id: string) {
+    selectStudentOrder(id);
+    clearLiveCheckoutRequest();
+    clearPreviewCheckout();
+    router.push("/orders");
+  }
   return <div className="narrow transaction-page">
+    {live && history?.signedIn && <Script src="https://checkout.razorpay.com/v1/checkout.js" onReady={() => setGatewayReady(true)}
+      onError={() => setError("Could not load the payment form. Reload checkout to retry.")} />}
     <Back href={checkout ? "/bag" : `/stalls/${stall.id}`}>{checkout ? "Your bag" : stall.name}</Back>
     <div className="page-heading"><h1>{checkout ? "Scheduled checkout" : "Your bag"}</h1><p className="row"><MapPin size={17} />{stall.location}</p></div>
     <div className="transaction-layout">
@@ -32,15 +71,15 @@ export function Checkout({ checkout = false }: { checkout?: boolean }) {
           {items.map(item => <div className="row between order-line" key={item.id}><div><strong>{checkout && `${item.qty} × `}{item.name}</strong><p>{money(item.price * item.qty)}</p></div>{!checkout && <Quantity product={item} />}</div>)}
         </section>
         {unavailable && <Notice>Some items are no longer available. Remove them from your bag to continue.</Notice>}
-        {pricesChanged && <div className="panel panel-pad stack"><Notice>One or more prices changed. Review the new total above before continuing.</Notice><button className="button secondary" onClick={acknowledgePrices}>Accept updated prices</button></div>}
+        {pricesChanged && <div className="panel panel-pad stack"><Notice>One or more prices changed. Review the new total above before continuing.</Notice><button className="button secondary" onClick={() => acknowledgePrices(data.products)}>Accept updated prices</button></div>}
         {checkout &&
           <section className="panel panel-pad stack">
             <h2 className="row"><CalendarClock size={22} /> Pickup window</h2>
             <p>Choose a 10-minute window. Times are shown in IST.</p>
             {slots.length ? <fieldset className="slot-grid"><legend className="sr-only">Available pickup windows</legend>{slots.map(slot =>
-              <label className="slot-option" key={slot.start}><input type="radio" name="pickup" checked={selected === slot.start} onChange={() => { updateCheckout({ start: slot.start }); setError(""); }} />{slotLabel(slot)}</label>)}</fieldset> :
+              <label className="slot-option" key={slot.start}><input type="radio" name="pickup" checked={selected === slot.start} onChange={() => { checkoutRequest.current = null; updateCheckout({ start: slot.start }); setError(""); }} />{slotLabel(slot)}</label>)}</fieldset> :
               <p className="muted">No pickup windows available for this bag within the next hour.</p>}
-            <label className="field">Preparation note (optional)<textarea maxLength={180} value={note} onChange={event => updateCheckout({ note: event.target.value })} placeholder="For example, less spicy" /></label>
+            <label className="field">Preparation note (optional)<textarea maxLength={180} value={note} onChange={event => { checkoutRequest.current = null; updateCheckout({ note: event.target.value }); }} placeholder="For example, less spicy" /></label>
           </section>}
       </div>
       <div className="transaction-column transaction-summary">
@@ -50,146 +89,111 @@ export function Checkout({ checkout = false }: { checkout?: boolean }) {
         </> : <>
           <section className="panel panel-pad stack">
             <h2>Price breakdown</h2><div className="row between"><span>Food subtotal</span><span>{money(subtotal)}</span></div>
-            <div className="row between"><span>Fees and taxes in preview</span><span>{money(0)}</span></div>
             <div className="row between total"><strong>Total</strong><strong>{money(subtotal)}</strong></div>
             <p>You can cancel while the stall is still deciding whether to accept. Rejected and expired orders request a full refund.</p>
           </section>
           {error && <Notice>{error}</Notice>}
-          {data.student ? <button className="button full" disabled={!canSubmit} onClick={() => {
-            const result = createPreviewOrder(selected, note);
-            if (result.id) router.push(`/orders/${result.id}`);
-            else setError(result.error ?? "Try again.");
-          }}><CreditCard size={18} /> Simulate payment · {money(subtotal)}</button> :
+          {history?.unavailable ? <Notice>Orders are temporarily unavailable.</Notice> :
+            history?.signedIn && !live ? <Notice>Online payment is currently unavailable.</Notice> :
+            history?.signedIn ? <button className="button full" disabled={!canSubmit || pending || !gatewayReady} onClick={async () => {
+              setPending(true);
+              setError("");
+              try {
+                checkoutRequest.current ??= liveCheckoutRequest(JSON.stringify({ lines: data.cart, selected, note }));
+                const result = await startLiveCheckout(data.cart, selected, note, checkoutRequest.current);
+                if (result.signIn) router.push("/sign-in?returnTo=checkout");
+                else if (result.id) {
+                  const id = result.id;
+                  const gateway = result.gateway;
+                  if (!gateway) openOrder(id);
+                  else {
+                    const Razorpay = (window as Window & { Razorpay?: RazorpayCheckout }).Razorpay;
+                    if (!Razorpay) throw new Error("Payment checkout unavailable");
+                    await new Promise<void>((resolve, reject) => {
+                      const checkout = new Razorpay({ key: gateway.key, order_id: gateway.order, amount: gateway.amount,
+                        currency: "INR", name: "CampusBite", modal: { ondismiss: resolve },
+                        handler: response => {
+                          void confirmLiveCheckout(id, response.razorpay_payment_id, response.razorpay_signature)
+                            .finally(() => { openOrder(id); resolve(); }).catch(reject);
+                        },
+                      });
+                      checkout.open();
+                    });
+                  }
+                } else {
+                  if (!result.error?.includes("same checkout")) {
+                    checkoutRequest.current = null;
+                    clearLiveCheckoutRequest();
+                  }
+                  setError(result.error ?? "Try again.");
+                }
+              } catch { setError("Checkout is temporarily unavailable. Please try again."); }
+              finally { setPending(false); }
+            }}><CreditCard size={18} /> {pending ? "Opening checkout…" : `Pay · ${money(subtotal)}`}</button> :
             <Link className="button full" href="/sign-in?returnTo=checkout">Sign in to continue <ArrowRight size={17} /></Link>}
-          <p className="fineprint">Frontend preview. No money is charged. Pickup windows use a sample campus day.</p>
         </>}
       </div>
     </div>
   </div>;
 }
 
-export function StudentAccount({ section }: { section: string }) {
-  const data = usePreview();
-  const router = useRouter();
-  const [signup, setSignup] = useState(false);
-  const [message, setMessage] = useState("");
-  if (section === "recovery") return <Recovery />;
-  if (section === "account") return <div className="narrow">
-    <div className="page-heading"><h1>Your account</h1><p>Manage your CampusBite preview profile.</p></div>
-    {data.student ? <section className="panel panel-pad stack"><h2>{data.student.name}</h2><p>{data.student.email}</p>
-      <label className="row"><input type="checkbox" checked={data.notifications} onChange={event => update(current => ({ ...current, notifications: event.target.checked }))} /> Save my order alert preference</label>
-      <button className="button secondary" onClick={() => update(current => ({ ...current, student: null }))}>Sign out of preview</button>
-    </section> : <section className="panel panel-pad stack">
-      <h2>Guest</h2>
-      <Link href="/sign-in" className="button">Sign in or register</Link>
-    </section>}
-    <section className="panel panel-pad stack" aria-label="Account links">
-      <Link href="/orders" className="row between account-link">My Orders <ArrowRight size={17} /></Link>
-      <Link href="/about" className="row between account-link">About Campus Bite <ArrowRight size={17} /></Link>
-    </section>
-  </div>;
-  function startSession(name: string, email: string) {
-    update(current => ({ ...current, student: { name, email: email.toLowerCase() } }));
-    router.replace(new URLSearchParams(window.location.search).get("returnTo") === "checkout" ? "/checkout" : "/account");
-  }
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const email = String(form.get("email")).trim();
-    if (!email) return;
-    startSession(String(form.get("name") || "Preview student"), email);
-  }
-  return <div className="narrow auth">
-    <Back href="/">Explore</Back><div className="page-heading"><h1>{signup ? "Create your account" : "Sign in to CampusBite"}</h1><p>Your bag stays here while you sign in.</p></div>
-    <section className="panel panel-pad stack">
-      <Notice>Student preview. Use a sample email and password. Supabase sign-in and email delivery are pending.</Notice>
-      <button className="button secondary" onClick={() => setMessage("Google sign-in will become available once Supabase OAuth is configured.")}>Continue with Google</button>
-      <form className="stack" onSubmit={submit}>
-        {signup && <label className="field">Name<input name="name" autoComplete="off" maxLength={80} required /></label>}
-        <label className="field">Email<input type="email" name="email" autoComplete="off" required placeholder="student@example.test" /></label>
-        <label className="field">Password<input type="password" name="password" autoComplete="new-password" minLength={8} required /></label>
-        <button className="button" type="submit">{signup ? "Create preview account" : "Sign in to preview"}</button>
-      </form>
-      <button className="button secondary" onClick={() => startSession("Preview student", "student@campusbite.example")}>Use sample student</button>
-      {message && <Notice>{message}</Notice>}
-      <div className="row between"><Link href="/recovery" className="text-link">Forgot password?</Link><button className="text-link" onClick={() => setSignup(!signup)}>{signup ? "Back to sign in" : "Create account"}</button></div>
-    </section>
-  </div>;
-}
-
-function Recovery() {
-  const [step, setStep] = useState<"email" | "code" | "reset" | "done">("email");
-  const [sent, setSent] = useState(0);
-  const [attempts, setAttempts] = useState(0);
-  const [error, setError] = useState("");
-  const [email, setEmail] = useState("");
+export function StudentOrders({ history }: { history: StudentOrderHistory }) {
   const now = useClock();
-  const cooldown = Math.max(0, 60 - Math.floor((now - sent) / 1000));
-  function send() { setSent(Date.now()); setAttempts(0); setError(""); setStep("code"); }
-  return <div className="narrow auth"><Back href="/sign-in">Sign in</Back>
-    <div className="page-heading"><h1>{step === "reset" ? "Set a new password" : step === "done" ? "Recovery preview complete" : "Reset your password"}</h1><p>Students who usually use Google can return to sign in with Google.</p></div>
-    <section className="panel panel-pad stack">
-      {step === "email" && <form className="stack" onSubmit={event => { event.preventDefault(); send(); }}>
-        <label className="field">Email address<input type="email" value={email} required onChange={event => setEmail(event.target.value)} /></label>
-        <button className="button">Preview recovery request</button>
-      </form>}
-      {step === "code" && <>
-        <Notice>If an account exists, it will receive recovery instructions when email delivery is connected. Preview code: 123456.</Notice>
-        <form className="stack" onSubmit={event => {
-          event.preventDefault();
-          if (attempts >= 5) return;
-          if (String(new FormData(event.currentTarget).get("code")) === "123456") { setStep("reset"); setError(""); }
-          else { setAttempts(attempts + 1); setError(attempts === 4 ? "Attempt limit reached. Request a new code." : "That code did not match."); }
-        }}>
-          <label className="field">Recovery code<input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required /></label>
-          <button className="button" disabled={attempts >= 5}>Verify preview code</button>
-        </form>
-        <button className="button secondary" disabled={cooldown > 0} onClick={send}>{cooldown ? `Resend in ${cooldown}s` : "Resend preview code"}</button>
-        <button className="text-link" disabled={attempts >= 5} onClick={() => { setError(""); setStep("reset"); }}>Preview emailed recovery link</button>
-      </>}
-      {step === "reset" && <form className="stack" onSubmit={event => {
-        event.preventDefault();
-        const values = new FormData(event.currentTarget);
-        if (values.get("password") !== values.get("confirm")) { setError("Passwords must match."); return; }
-        setError(""); setStep("done");
-      }}>
-        <label className="field">New sample password<input name="password" type="password" minLength={8} autoComplete="new-password" required /></label>
-        <label className="field">Confirm sample password<input name="confirm" type="password" minLength={8} autoComplete="new-password" required /></label>
-        <button className="button">Complete recovery preview</button>
-      </form>}
-      {step === "done" && <><p>The preview recovery flow is complete. Account passwords remain managed through Supabase once connected.</p><Link className="button" href="/sign-in">Return to sign in</Link></>}
-      {error && <Notice>{error}</Notice>}
-    </section>
-  </div>;
+  const [id, setId] = useState<string | null>(null);
+  useEffect(() => { setId(selectedStudentOrder()); }, []);
+  function select(next: string | null) {
+    selectStudentOrder(next);
+    setId(next);
+  }
+  const { orders } = history;
+  if (history.unavailable) return <div className="narrow"><h1>Your orders</h1><Notice>Orders are temporarily unavailable.</Notice></div>;
+  if (!history.signedIn) return <div className="narrow"><h1>Your orders</h1><Empty title="Sign in to see your orders"><Link className="button" href="/sign-in">Sign in</Link></Empty></div>;
+  const order = orders.find(item => item.id === id);
+  if (!order) return <div className="narrow order-history"><div className="page-heading"><h1>Your orders</h1><p>Track pickups and refund requests.</p></div>
+    {!orders.length && <Empty title="No orders yet"><Link className="button" href="/">Explore campus stalls</Link></Empty>}
+    <div className="stack order-history-grid">{orders.map(item => <button type="button" className="panel panel-pad stack order-card" key={item.id} onClick={() => select(item.id)}>
+      <div className="row between"><strong>{item.name}</strong><Status tone="good">{item.status === "unpaid" ? "Payment pending" : statuses[visibleStatus({ status: item.status, deadline: item.deadline }, now)]}</Status></div>
+      <div className="row between"><span>{displayReference(item.id)} · {dateLabel(item.placed)}</span><strong>{money(item.total)}</strong></div>
+    </button>)}</div></div>;
+  return <StudentOrderDetails key={order.id} order={order} now={now} close={() => select(null)} />;
 }
 
-export function StudentOrders({ id }: { id?: string }) {
-  const data = usePreview();
-  const now = useOrderExpiry();
+function displayReference(id: string) {
+  return "CB-" + id.slice(0, 8).toUpperCase();
+}
+
+function StudentOrderDetails({ order, now, close }: { order: StudentOrder; now: number; close: () => void }) {
+  const router = useRouter();
   const [error, setError] = useState("");
-  const orders = data.orders.filter(order => order.student === data.student?.email);
-  const order = orders.find(item => item.id === id);
-  if (!data.student) return <div className="narrow"><h1>Your orders</h1><Empty title="Sign in to see your orders"><Link className="button" href="/sign-in">Sign in</Link></Empty></div>;
-  if (!id) return <div className="narrow order-history"><div className="page-heading"><h1>Your orders</h1><p>Track pickups and refund requests.</p></div>
-    {!orders.length && <Empty title="No orders yet"><Link className="button" href="/">Explore campus stalls</Link></Empty>}
-    <div className="stack order-history-grid">{orders.map(item => <Link className="panel panel-pad stack order-card" key={item.id} href={`/orders/${item.id}`}>
-      <div className="row between"><strong>{item.name}</strong><Status tone="good">{statuses[visibleStatus(item, now)]}</Status></div>
-      <div className="row between"><span>{item.id} · {dateLabel(item.placed)}</span><strong>{money(item.total)}</strong></div>
-    </Link>)}</div></div>;
-  if (!order) return <div className="narrow"><Empty title="Order unavailable"><Link className="button" href="/orders">View orders</Link></Empty></div>;
-  const status = visibleStatus(order, now);
+  const [cancelling, setCancelling] = useState(false);
+  const status = order.status === "unpaid" ? "unpaid" : visibleStatus({ status: order.status, deadline: order.deadline }, now);
+  const refresh = (["unpaid", "awaiting", "accepted", "preparing", "ready"].includes(order.status)
+    || ["Requested", "Pending"].includes(order.refund));
+  useEffect(() => {
+    if (!refresh) return;
+    const timer = window.setInterval(() => { if (!document.hidden) router.refresh(); }, 8000 + Math.random() * 4000);
+    return () => window.clearInterval(timer);
+  }, [refresh, router]);
   const seconds = now ? Math.max(0, Math.ceil((order.deadline - now) / 1000)) : 90;
-  const refund = status === "expired" && order.refund === "None" ? "Requested" : order.refund;
-  return <div className="narrow transaction-page"><Back href="/orders">Your orders</Back>
-    <div className="page-heading"><p className="eyebrow">{order.id}</p><h1>{statuses[status]}</h1><p>{order.name}</p></div>
+  const refund = status === "expired" && order.payment === "Verified" && order.refund === "None" ? "Requested" : order.refund;
+  return <div className="narrow transaction-page"><button type="button" className="back" onClick={close}><ArrowLeft size={17} /> Your orders</button>
+    <div className="page-heading"><p className="eyebrow">{displayReference(order.id)}</p><h1>{status === "unpaid" ? "Payment pending" : statuses[status]}</h1><p>{order.name}</p></div>
     <div className="transaction-layout">
       <div className="transaction-column">
         <section className={`panel panel-pad stack ${status === "ready" ? "ready-panel" : ""}`}>
           <h2 className="row"><MapPin size={21} />{order.location}</h2>
           <p className="row"><Clock3 size={18} />{dateLabel(order.slot.start)} · {slotLabel(order.slot)} IST</p>
-          {status === "awaiting" && <><p>Preview payment verified. The stall has <strong>{seconds}s</strong> to accept your order.</p>
-            <button className="button secondary" onClick={() => {
-              if (window.confirm("Cancel this order and request a full preview refund?")) setError(changeOrder(order.id, "cancelled") ?? "");
+          {status === "unpaid" && <p>Waiting for payment confirmation from Razorpay.</p>}
+          {status === "awaiting" && <><p>Payment verified. The stall has <strong>{seconds}s</strong> to accept your order.</p>
+            <button className="button secondary" disabled={cancelling} onClick={async () => {
+              if (!window.confirm("Cancel this order and request a full refund?")) return;
+              setCancelling(true);
+              try {
+                const result = await updateLiveStudentOrder(order.id);
+                setError(result.error ?? "");
+                router.refresh();
+              } catch { setError("This order could not be cancelled."); }
+              finally { setCancelling(false); }
             }}>Cancel order</button></>}
           {status === "ready" && <div className="pickup-code"><PackageCheck size={26} /><strong>{order.code}</strong><p>Show this six-digit code at the stall.</p></div>}
           {status === "accepted" && <p>The stall has accepted your order. Check back for preparation updates.</p>}
@@ -200,33 +204,40 @@ export function StudentOrders({ id }: { id?: string }) {
         <section className="panel panel-pad stack"><h2>Order details</h2>{order.items.map((item, index) => <div className="row between" key={index}><span>{item.qty} × {item.name}</span><strong>{money(item.price * item.qty)}</strong></div>)}
           {order.note && <p>Preparation note · {order.note}</p>}
           <div className="row between total"><strong>Total</strong><strong>{money(order.total)}</strong></div>
-          <p className="row"><ShieldCheck size={18} /> Payment · {order.payment} in preview</p>
+          <p className="row"><ShieldCheck size={18} /> Payment · {order.payment}</p>
           {refund !== "None" && <p>Refund · {refund} · {money(order.total)}</p>}
         </section>
       </div>
       <div className="transaction-column">
         <section className="panel panel-pad stack"><h2>Activity</h2>{order.events.map((event, index) => <div className="row between" key={index}><span>{event.status}</span><time>{clockTime(event.at)}</time></div>)}</section>
-        <SupportForm key={order.id} id={order.id} />
+        <SupportForm id={order.id} support={order.support} />
       </div>
     </div>
   </div>;
 }
 
-function SupportForm({ id }: { id: string }) {
-  const data = usePreview();
-  const support = data.support.find(item => item.order === id);
+function SupportForm({ id, support }: { id: string; support?: string }) {
+  const router = useRouter();
   const [issue, setIssue] = useState("");
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
   return <section className="panel panel-pad stack">
     <h2>Order support</h2>
-    {support ? <><Status tone={support.resolution ? "good" : "warn"}>{support.resolution ? "Resolved" : "Submitted in preview"}</Status><p>{support.issue}</p>{support.resolution && <p>{support.resolution}</p>}</> :
-      <form className="stack" onSubmit={event => {
+    {support ? <><Status tone="warn">Submitted</Status><p>{support}</p></> :
+      <form className="stack" onSubmit={async event => {
         event.preventDefault();
         if (!issue.trim()) return;
-        update(current => current.support.some(item => item.order === id) ? current :
-          { ...current, support: [...current.support, { order: id, issue: issue.trim(), resolution: "" }] });
+        setPending(true);
+        try {
+          const result = await updateLiveStudentOrder(id, issue);
+          setError(result.error ?? "");
+          if (!result.error) router.refresh();
+        } catch { setError("Your support note could not be saved."); }
+        finally { setPending(false); }
       }}>
         <label className="field">What happened?<textarea value={issue} onChange={event => setIssue(event.target.value)} placeholder="For example, a missing item" maxLength={300} required /></label>
-        <button className="button secondary">Submit sample support request</button>
+        {error && <Notice>{error}</Notice>}
+        <button className="button secondary" disabled={pending}>Submit support request</button>
       </form>}
   </section>;
 }

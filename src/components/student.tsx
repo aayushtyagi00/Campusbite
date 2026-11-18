@@ -6,20 +6,20 @@ import { useState } from "react";
 import { categories, defaultFoodCourt, foodCourts, isOrderable, money, pickupSlots, slotLabel, stallsAtCourt, type Product, type Stall } from "@/lib/campus";
 import { cartItems, previewTime, update, useClock, usePreview, usePreviewReady } from "@/lib/preview";
 import { Back, Empty, Photo, Status } from "./ui";
-import { Checkout, StudentAccount, StudentOrders } from "./student-flow";
+import { Checkout, StudentOrders } from "./student-flow";
+import type { StudentOrderHistory } from "@/lib/student-order-types";
 import { Quantity } from "./quantity";
 import { CampusReviews } from "./campus-reviews";
 import { HomeGuide } from "./home-guide";
 
-export function StudentPage({ section, id }: { section: string; id?: string }) {
+export function StudentPage({ section, id, history }: { section: string; id?: string; history?: StudentOrderHistory }) {
   switch (section) {
     case "about": return <About />;
     case "stalls": return <Menu key={id} id={id} />;
     case "products": return <ProductDetail key={id} id={id} />;
     case "bag": return <Checkout />;
-    case "checkout": return <Checkout checkout />;
-    case "sign-in": case "recovery": case "account": return <StudentAccount key={section} section={section} />;
-    case "orders": return <StudentOrders key={id} id={id} />;
+    case "checkout": return <Checkout checkout history={history} />;
+    case "orders": return <StudentOrders history={history ?? { signedIn: false, orders: [] }} />;
     default: return <Explore key={section} section={section} />;
   }
 }

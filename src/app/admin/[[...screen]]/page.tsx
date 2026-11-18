@@ -4,6 +4,9 @@ import { AccessManagement, AdminOverview, VendorApplications } from "@/component
 import { StaffSignIn } from "@/components/staff-entry";
 import { Notice } from "@/components/ui";
 import { adminSession } from "@/lib/staff/access";
+import { liveCommerce } from "@/lib/student-auth";
+import { StorefrontSettings } from "@/components/storefront-settings";
+import { RecentCommerceOrders } from "@/components/recent-commerce-orders";
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ screen?: string[] }>;
@@ -19,9 +22,22 @@ export default async function Page({ params, searchParams }: {
   if (screen.length > 1) notFound();
   const section = screen[0];
   if (section === "vendors") redirect("/admin/applications");
-  if (["overview", "orders", "refunds", "finance", "settings"].includes(section)) redirect("/admin");
+  if (["overview", "refunds", "finance", "settings"].includes(section)) redirect("/admin");
   const { client, email } = session;
 
+  if (section === "orders") {
+    if (!liveCommerce()) redirect("/admin");
+    const [shops, storefronts] = await Promise.all([
+      client.from("vendor_shops").select("id,name,created_at").order("name"),
+      client.from("commerce_stalls").select("slug,shop_id,capacity,enabled"),
+    ]);
+    return <OpsShell area="admin" path="/admin/orders" email={email}>
+      <h1>Commerce operations</h1>
+      {shops.error || storefronts.error ? <Notice>Storefront settings are temporarily unavailable.</Notice> :
+        <StorefrontSettings shops={shops.data} storefronts={storefronts.data} />}
+      <RecentCommerceOrders />
+    </OpsShell>;
+  }
   if (section === "access") {
     const [shops, grants] = await Promise.all([
       client.from("vendor_shops").select("id,name,created_at").order("name"),

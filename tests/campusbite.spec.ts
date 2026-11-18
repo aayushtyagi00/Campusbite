@@ -1,26 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
-
-async function openCheckout(page: Page) {
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Campus cafés & food vendors (3)" })).toBeVisible();
-  await page.getByRole("link", { name: /The Rolling Kitchen/ }).click();
-  await page.getByRole("button", { name: "Add Paneer Tikka Wrap" }).click();
-  await page.getByRole("link", { name: "View bag" }).click();
-  await expect(page.getByRole("heading", { name: "Your bag" })).toBeVisible();
-  await page.getByRole("link", { name: "Choose pickup time" }).click();
-  await page.getByRole("radio").first().check();
-  await page.getByLabel("Preparation note (optional)").fill("Less spicy");
-  await page.getByRole("link", { name: "Sign in to continue" }).click();
-  await page.getByRole("button", { name: "Use sample student" }).click();
-  await expect(page.getByRole("heading", { name: "Scheduled checkout" })).toBeVisible();
-  await expect(page.getByRole("radio").first()).toBeChecked();
-  await expect(page.getByLabel("Preparation note (optional)")).toHaveValue("Less spicy");
-}
-
-async function verifyPayment(page: Page) {
-  await page.getByRole("button", { name: /Simulate payment/ }).click();
-  await expect(page.getByRole("heading", { name: "Awaiting acceptance" })).toBeVisible();
-}
+import { expect, test } from "@playwright/test";
 
 test("the public vendor page offers applications while staff routes require sign-in", async ({ page }) => {
   await page.goto("/vendor");
@@ -53,15 +31,22 @@ test("the public vendor page offers applications while staff routes require sign
   await expect(page.getByText(/Google sign-in could not be completed/)).toBeVisible();
 });
 
-test("a student can cancel a pending sample order without gaining staff access", async ({ page }) => {
-  await openCheckout(page);
-  await verifyPayment(page);
-  page.once("dialog", dialog => dialog.accept());
-  await page.getByRole("button", { name: "Cancel order" }).click();
-  await expect(page.getByRole("heading", { name: "Cancelled", exact: true })).toBeVisible();
-  await expect(page.getByText("Refund · Requested", { exact: false })).toBeVisible();
-  await page.goto("/admin/access");
-  await expect(page).toHaveURL(/\/admin\/sign-in$/);
+test("a cached sample profile cannot sign in or open orders", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.setItem("campusbite.preview.v1", JSON.stringify({
+    student: { name: "Old profile", email: "old@example.test" },
+  })));
+  await page.goto("/sign-in?returnTo=checkout");
+  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /sample|preview/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("campusbite.preview.v1")!).student ?? null)).toBeNull();
+  await page.goto("/account");
+  await expect(page.getByRole("link", { name: "Sign in or register" })).toBeVisible();
+  await page.goto("/orders");
+  await expect(page.getByText("Sign in to see your orders")).toBeVisible();
+  await page.goto("/recovery");
+  await expect(page.getByRole("button", { name: "Email a code" })).toBeVisible();
 });
 
 test("the bag requires confirmation for a different stall and a changed price", async ({ page }) => {
@@ -82,8 +67,7 @@ test("the bag requires confirmation for a different stall and a changed price", 
   await page.evaluate(() => {
     const key = "campusbite.preview.v1";
     const preview = JSON.parse(localStorage.getItem(key)!);
-    const chai = preview.products.find((product: { id: string }) => product.id === "adrak");
-    chai.price = 3900;
+    preview.cart[0].unitPrice = 1;
     localStorage.setItem(key, JSON.stringify(preview));
   });
   await page.reload();
@@ -119,7 +103,7 @@ test("laptop shoppers can browse and check out using the desktop layout", async 
   await header.getByText("Profile", { exact: true }).click();
   const orders = header.getByRole("link", { name: /My orders/ });
   await expect(orders).toBeVisible();
-  await expect(header.getByRole("link", { name: /Sign in or register/ })).toBeVisible();
+  await expect(header.getByRole("link", { name: "My account", exact: false })).toBeVisible();
   await orders.press("Escape");
   await expect(orders).toBeHidden();
   await navigation.getByRole("link", { name: "About CampusBite" }).click();
@@ -182,6 +166,6 @@ test("mobile navigation restores the Stitch dock and puts About under Account", 
   await nav.getByRole("link", { name: "Order Online" }).click();
   await expect(page.getByRole("heading", { name: "Order Online" })).toBeVisible();
   await nav.getByRole("link", { name: "Account" }).click();
-  await page.getByRole("link", { name: "About Campus Bite" }).click();
+  await page.getByRole("link", { name: "About CampusBite" }).click();
   await expect(page.getByRole("heading", { name: "About CampusBite" })).toBeVisible();
 });
