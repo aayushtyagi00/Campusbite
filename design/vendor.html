@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CampusBite - Vendor Live Order Board</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container": "#efeee8",
+            "outline-variant": "#c0c9c2",
+            "primary": "#01402e",
+            "on-tertiary-fixed-variant": "#872000",
+            "error": "#ba1a1a",
+            "on-surface-variant": "#404944",
+            "on-secondary-fixed-variant": "#284e42",
+            "surface-dim": "#dbdad4",
+            "inverse-primary": "#9ad2b9",
+            "error-container": "#ffdad6",
+            "tertiary-fixed": "#ffdbd1",
+            "on-secondary": "#ffffff",
+            "tertiary": "#6d1800",
+            "tertiary-container": "#952500",
+            "primary-container": "#215844",
+            "surface-bright": "#faf9f3",
+            "on-tertiary-fixed": "#3b0900",
+            "secondary": "#406659",
+            "on-primary-container": "#94ccb3",
+            "primary-fixed-dim": "#9ad2b9",
+            "on-background": "#1b1c19",
+            "on-tertiary-container": "#ffac95",
+            "background": "#faf9f3",
+            "on-primary-fixed-variant": "#17503c",
+            "surface-container-lowest": "#ffffff",
+            "secondary-fixed-dim": "#a6cfc0",
+            "primary-fixed": "#b6efd4",
+            "surface-container-low": "#f5f4ee",
+            "outline": "#707974",
+            "surface": "#faf9f3",
+            "surface-container-high": "#e9e8e2",
+            "secondary-fixed": "#c2ecdb",
+            "surface-container-highest": "#e3e3dd",
+            "secondary-container": "#c2ecdb",
+            "on-secondary-container": "#466c5f",
+            "inverse-surface": "#30312d",
+            "on-primary-fixed": "#002116",
+            "on-error": "#ffffff",
+            "on-surface": "#1b1c19",
+            "surface-variant": "#e3e3dd",
+            "tertiary-fixed-dim": "#ffb5a0",
+            "inverse-on-surface": "#f2f1eb",
+            "on-tertiary": "#ffffff",
+            "on-secondary-fixed": "#002018",
+            "on-primary": "#ffffff",
+            "surface-tint": "#326853",
+            "on-error-container": "#93000a"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "gutter": "1rem",
+            "space-md": "1rem",
+            "margin-desktop": "2.5rem",
+            "margin-tablet": "1.5rem",
+            "space-xs": "0.25rem",
+            "space-sm": "0.5rem",
+            "margin": "1rem",
+            "space-lg": "1.5rem",
+            "space-xl": "2.25rem",
+            "gutter-desktop": "1.5rem"
+          },
+          "fontFamily": {
+            "label-lg": ["DM Sans"],
+            "body-lg": ["DM Sans"],
+            "label-sm": ["DM Sans"],
+            "headline-md": ["DM Sans"],
+            "headline-lg": ["DM Sans"],
+            "headline-lg-mobile": ["DM Sans"],
+            "headline-xl-mobile": ["DM Sans"],
+            "body-md": ["DM Sans"],
+            "headline-sm": ["DM Sans"],
+            "headline-xl": ["DM Sans"],
+            "body-sm": ["DM Sans"],
+            "label-md": ["DM Sans"]
+          },
+          "fontSize": {
+            "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+            "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "headline-lg-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "headline-xl-mobile": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "600" }]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #faf9f3;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #c0c9c2;
+      border-radius: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #707974;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface antialiased overflow-hidden select-none">
+<!-- Master Container 1440px viewport design -->
+<div class="flex h-screen w-full overflow-hidden bg-background">
+<!-- 1. LEFT PERSISTENT SIDEBAR (260px wide) -->
+<aside class="w-[200px] h-full flex flex-col justify-between shrink-0 bg-surface-container-lowest border-r border-outline-variant/40 p-3 z-30"><div class="flex flex-col gap-4"><div class="flex items-center gap-2.5 px-1 pt-1"><div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-on-primary shrink-0"><span class="material-symbols-outlined text-[18px]">restaurant_menu</span></div><div><div class="flex items-center gap-1"><span class="font-headline-sm text-[16px] text-primary tracking-tight font-bold">CampusBite</span><span class="w-1.5 h-1.5 rounded-full bg-primary inline-block"></span></div><p class="font-label-sm text-[10px] text-on-surface-variant">Partner Portal</p></div></div><div class="p-2.5 bg-surface-container-low rounded-lg border border-outline-variant/30 flex items-center gap-2"><div class="w-7 h-7 rounded-md bg-secondary-fixed flex items-center justify-center text-primary font-bold text-label-sm shrink-0">04</div><div class="flex-1 min-w-0"><h2 class="font-label-md text-label-md text-on-surface truncate font-semibold">The Rolling Kitchen</h2><p class="font-body-sm text-[11px] text-on-surface-variant flex items-center gap-1 truncate"><span class="material-symbols-outlined text-[12px]">storefront</span>Stall 04 · UniMall L1</p></div></div><nav class="flex flex-col gap-1"><a class="flex items-center justify-between px-2.5 py-2 bg-secondary-container text-on-secondary-container rounded-lg font-semibold transition-colors" href="#"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary text-[18px]">receipt_long</span><span class="font-label-md text-label-md text-primary font-bold">Live Orders</span></div><span class="px-1.5 py-0.5 rounded-full bg-primary text-on-primary text-[10px] font-bold">10</span></a><a class="flex items-center gap-2 px-2.5 py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors" href="#"><span class="material-symbols-outlined text-[18px]">restaurant_menu</span><span class="font-label-md text-label-md">Menu</span></a><a class="flex items-center gap-2 px-2.5 py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors" href="#"><span class="material-symbols-outlined text-[18px]">inventory_2</span><span class="font-label-md text-label-md">Inventory</span></a><a class="flex items-center gap-2 px-2.5 py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors" href="#"><span class="material-symbols-outlined text-[18px]">account_balance_wallet</span><span class="font-label-md text-label-md">Payouts</span></a><a class="flex items-center gap-2 px-2.5 py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-label-md text-label-md">Settings</span></a></nav></div><div class="flex flex-col gap-2 pt-3 border-t border-outline-variant/30"><div class="flex items-center justify-between px-1 text-on-surface-variant"><div class="flex items-center gap-1.5"><span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span></span><span class="font-label-sm text-[11px] text-primary font-medium">Live connection</span></div></div></div></aside>
+<!-- MAIN OPERATIONAL WORKSPACE (Flex-1) -->
+<main class="flex-1 flex flex-col h-full min-w-0 bg-background overflow-hidden">
+<!-- 2. TOP OPERATIONAL HEADER -->
+<header class="w-full bg-surface-container-lowest border-b border-outline-variant/40 px-6 py-4 flex flex-col gap-3 shrink-0"><div class="flex flex-col gap-0.5"><div><h1 class="text-[28px] leading-[34px] font-bold text-on-background tracking-tight whitespace-nowrap">Lunch rush, under control.</h1><p class="font-body-md text-[14px] text-on-surface-variant">Today · Stall 04 (Level 1 Central Atrium)</p></div></div><div class="flex items-center justify-between pt-1 border-t border-outline-variant/30"><div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary-fixed/50 text-primary border border-secondary-fixed-dim/60 text-[13px] font-medium"><span class="material-symbols-outlined text-[16px]">verified</span>Showing Paid Orders Only (Pre-paid via UPI)</div><div class="flex items-center gap-2"><button class="flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-xl text-[14px] font-medium text-on-surface hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-[16px]">refresh</span><span>Manual Refresh</span></button><button class="flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-xl text-[14px] font-medium text-on-surface hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-[16px] text-primary">notifications</span><span>Enable order alerts</span></button><button class="flex items-center gap-1.5 px-3 py-1.5 border border-error/50 bg-error-container/30 text-error rounded-xl text-[14px] font-medium hover:bg-error-container transition-colors"><span class="material-symbols-outlined text-[16px]">pause_circle</span><span>Pause new orders</span></button></div></div></header>
+<!-- 3. QUICK COUNTER METRIC STRIP -->
+<section class="grid grid-cols-4 gap-4 px-6 py-3 bg-surface-container-low border-b border-outline-variant/30 shrink-0"><div class="bg-surface-container-lowest rounded-xl px-4 py-2.5 border border-outline-variant/30 flex items-center justify-between"><div><p class="font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Awaiting Acceptance</p><div class="flex items-baseline gap-2 mt-0.5"><span class="font-headline-md text-[20px] font-bold text-error">2 orders</span><span class="px-1.5 py-0.2 rounded bg-error-container text-error text-[10px] font-bold">Urgent</span></div></div><div class="w-9 h-9 rounded-lg bg-error-container/40 flex items-center justify-center text-error"><span class="material-symbols-outlined text-[20px]">pending_actions</span></div></div><div class="bg-surface-container-lowest rounded-xl px-4 py-2.5 border border-outline-variant/30 flex items-center justify-between"><div><p class="font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">In Preparation</p><div class="flex items-baseline gap-2 mt-0.5"><span class="font-headline-md text-[20px] font-bold text-primary">3 orders</span><span class="font-body-sm text-[13px] text-on-surface-variant">Kitchen queue</span></div></div><div class="w-9 h-9 rounded-lg bg-secondary-fixed/50 flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[20px]">skillet</span></div></div><div class="bg-surface-container-lowest rounded-xl px-4 py-2.5 border border-outline-variant/30 flex items-center justify-between"><div><p class="font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Ready for Pickup</p><div class="flex items-baseline gap-2 mt-0.5"><span class="font-headline-md text-[20px] font-bold text-primary">3 orders</span><span class="font-body-sm text-[12px] text-on-surface-variant">At Counter</span></div></div><div class="w-9 h-9 rounded-lg bg-secondary-container flex items-center justify-center text-on-secondary-container"><span class="material-symbols-outlined text-[20px]">shopping_bag</span></div></div><div class="bg-surface-container-lowest rounded-xl px-4 py-2.5 border border-outline-variant/30 flex items-center justify-between"><div><p class="font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">Completed Today</p><div class="flex items-baseline gap-2 mt-0.5"><span class="font-headline-md text-[20px] font-bold text-on-surface">42 orders</span><span class="font-label-md text-[12px] font-semibold text-primary">₹6,480 total</span></div></div><div class="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-on-surface-variant"><span class="material-symbols-outlined text-[20px]">check_circle</span></div></div></section>
+<!-- 4. 5-COLUMN KANBAN ORDER BOARD -->
+<div class="flex-1 flex flex-col p-4 gap-3 overflow-hidden relative"><div class="grid grid-cols-5 gap-3 items-start"><div class="flex flex-col bg-surface-container-low rounded-xl border border-outline-variant/40 p-2.5"><div class="flex items-center justify-between pb-2 border-b border-outline-variant/30 mb-2"><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-error"></span><h3 class="font-label-md text-[13px] font-bold text-on-surface truncate">Awaiting Acceptance</h3></div><span class="px-1.5 py-0.2 bg-error-container text-error rounded-full text-[11px] font-bold">2</span></div><div class="space-y-2.5"><div class="bg-surface-container-lowest rounded-lg p-2.5 border-2 border-error shadow-sm flex flex-col gap-2"><div class="flex items-center justify-between"><span class="font-label-md text-[13px] font-bold text-on-surface">CB-1042</span><span class="text-[13px] font-bold text-primary">Total ₹150 · UPI</span></div><div class="flex items-center justify-between text-[13px]"><span class="text-on-surface-variant font-medium">Pickup 12:20–12:30 PM</span><span class="px-2 py-0.5 rounded bg-error-container text-error text-[11px] font-bold inline-flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">alarm</span>01:12</span></div><div class="bg-surface-container-low rounded p-2 text-[13px] space-y-1"><div class="flex justify-between"><span>1x Paneer Tikka Wrap</span><span class="font-medium">₹120</span></div><div class="flex justify-between"><span>1x Special Kulhad Chai</span><span class="font-medium">₹30</span></div></div><div class="p-1.5 rounded bg-tertiary-fixed text-tertiary text-[13px] font-medium leading-tight">Note: Less spicy, extra mint chutney</div><div class="grid grid-cols-2 gap-1.5 pt-0.5"><button class="py-1.5 bg-primary text-on-primary text-[14px] font-medium rounded-lg flex items-center justify-center gap-1 hover:bg-primary-container"><span class="material-symbols-outlined text-[14px]">check</span>Accept</button><button class="py-1.5 border border-outline text-on-surface-variant text-[14px] font-medium rounded-lg hover:bg-surface-container">Reject</button></div></div><div class="bg-surface-container-lowest rounded-lg p-2.5 border border-outline-variant/40 shadow-sm flex flex-col gap-2"><div class="flex items-center justify-between"><span class="font-label-md text-[13px] font-bold text-on-surface">CB-1043</span><span class="text-[13px] font-bold text-primary">Total ₹80 · UPI</span></div><div class="flex items-center justify-between text-[13px]"><span class="text-on-surface-variant font-medium">Pickup 12:30–12:40 PM</span><span class="px-2 py-0.5 rounded bg-error-container/60 text-error text-[11px] font-bold inline-flex items-center gap-1"><span class="material-symbols-outlined text-[13px]">alarm</span>00:45</span></div><div class="bg-surface-container-low rounded p-2 text-[13px]"><div class="flex justify-between"><span>1x Aloo Tikki Wrap</span><span class="font-medium">₹80</span></div></div><div class="grid grid-cols-2 gap-1.5 pt-0.5"><button class="py-1.5 bg-primary text-on-primary text-[14px] font-medium rounded-lg flex items-center justify-center gap-1 hover:bg-primary-container"><span class="material-symbols-outlined text-[14px]">check</span>Accept</button><button class="py-1.5 border border-outline text-on-surface-variant text-[14px] font-medium rounded-lg hover:bg-surface-container">Reject</button></div></div></div></div><div class="flex flex-col bg-surface-container-low rounded-xl border border-outline-variant/40 p-2.5"><div class="flex items-center justify-between pb-2 border-b border-outline-variant/30 mb-2"><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-secondary"></span><h3 class="font-label-md text-[13px] font-bold text-on-surface truncate">Scheduled</h3></div><span class="px-1.5 py-0.2 bg-surface-container text-on-surface-variant rounded-full text-[11px] font-bold">2</span></div><div class="space-y-2.5"><div class="bg-surface-container-lowest rounded-lg p-2.5 border border-outline-variant/40 shadow-sm flex flex-col gap-2"><div class="flex items-center justify-between"><span class="font-label-md text-[13px] font-bold text-on-surface">CB-1044</span><span class="text-[13px] font-bold text-primary">Paid ₹240</span></div><div class="flex items-center justify-between text-[13px] text-on-surface-variant"><span>Pickup 12:30–12:40 PM</span><span class="bg-surface-container px-1.5 py-0.2 rounded font-medium text-on-surface text-[11px]">In 18m</span></div><div class="bg-surface-container-low rounded p-2 text-[13px]"><div class="flex justify-between"><span>2x Classic Paneer Wraps</span><span>₹240</span></div></div><button class="w-full py-1.5 bg-secondary text-on-secondary text-[14px] rounded-lg font-medium hover:bg-primary transition-colors flex items-center justify-center gap-1"><span class="material-symbols-outlined text-[16px]">skillet</span>Start Preparing</button></div><div class="bg-surface-container-lowest rounded-lg p-2.5 border border-outline-variant/40 shadow-sm flex flex-col gap-2"><div class="flex items-center justify-between"><span class="font-label-md text-[13px] font-bold text-on-surface">CB-1040</span><span class="text-[13px] font-bold text-primary">Paid ₹110</span></div><div class="flex items-center justify-between text-[13px] text-on-surface-variant"><span>Pickup 12:40–12:50 PM</span><span class="bg-surface-container px-1.5 py-0.2 rounded font-medium text-on-surface text-[11px]">In 23m</span></div><div class="bg-surface-container-low rounded p-2 text-[13px] space-y-0.5"><div>1x Masala Fries</div><div>1x Ginger Kulhad Chai</div></div><button class="w-full py-1.5 bg-secondary text-on-secondary text-[14px] rounded-lg font-medium hover:bg-primary transition-colors flex items-center justify-center gap-1"><span class="material-symbols-outlined text-[16px]">skillet</span>Start Preparing</button></div></div></div><div class="flex flex-col bg-surface-container-low rounded-xl border border-outline-variant/40 p-2.5"><div class="flex items-center justify-between pb-2 border-b border-outline-variant/30 mb-2"><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-primary-container"></span><h3 class="font-label-md text-[13px] font-bold text-on-surface truncate">Preparing</h3></div><span class="px-1.5 py-0.2 bg-secondary-fixed text-primary rounded-full text-[11px] font-bold">3</span></div><div class="space-y-2.5"><div class="bg-surface-container-lowest rounded-lg p-2.5 border border-outline-variant/40 shadow-sm flex flex-col gap-2"><div class="flex items-center justify-between"><span class="font-label-md text-[13px] font-bold text-on-surface">CB-1037</span><span class="text-[13px] font-bold text-primary">Paid ₹150</span></div><div class="flex items-center justify-between text-[13px]"><span class="text-on-surface-variant font-medium">Pickup 12:10–12:20 PM</span><span class="text-tertiary font-medium text-[11px]">Started 6m ago</span></div><div class="bg-surface-container-low rounded p-2 text-[13px] space-y-0.5"><div>1x Paneer Wrap</div><div>1x Kulhad Chai</div></div><button class="w-full py-1.5 bg-primary-container text-on-primary text-[14px] rounded-lg font-medium hover:bg-primary transition-colors flex items-center justify-center gap-1"><span class="material-symbols-outlined text-[16px]">check_circle</span>Mark Ready</button></div><div class="bg-surface-container-lowest rounded-lg p-2.5 border border-outline-variant/40 shadow-sm flex flex-col gap-2"><div class="flex items-center justify-between"><span class="font-label-md text-[13px] font-bold text-on-surface">CB-1038</span><span class="text-[13px] font-bold text-primary">Paid ₹210</span></div><div class="flex items-center justify-between text-[13px]"><span class="text-on-surface-variant font-medium">Pickup 12:20–12:30 PM</span><span class="text-primary font-medium text-[11px]">Started 4m ago</span></div><div class="bg-surface-container-low rounded p-2 text-[13px]"><div>2x Cheese Corn Wraps</div></div><button class="w-full py-1.5 bg-primary-container text-on-primary text-[14px] rounded-lg font-medium hover:bg-primary transition-colors flex items-center justify-center gap-1"><span class="material-symbols-outlined text-[16px]">check_circle</span>Mark Ready</button></div></div></div><div class="flex flex-col bg-surface-container-low rounded-xl border border-outline-variant/40 p-2.5"><div class="flex items-center justify-between pb-2 border-b border-outline-variant/30 mb-2"><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-primary"></span><h3 class="font-label-md text-[13px] font-bold text-on-surface truncate">Ready for Pickup</h3></div><span class="px-1.5 py-0.2 bg-primary-fixed text-primary rounded-full text-[11px] font-bold">3</span></div><div class="space-y-2.5"><div class="bg-surface-container-lowest rounded-lg p-2.5 border-2 border-primary shadow-sm flex flex-col gap-2"><div class="flex items-center justify-between"><span class="font-label-md text-[13px] font-bold text-primary">CB-1036</span><span class="text-[13px] font-bold text-primary">Paid ₹180</span></div><div class="text-[13px] text-on-surface flex justify-between"><span>Rohan S.</span><span class="text-tertiary font-medium text-[11px]">Waiting 4m</span></div><div class="text-[13px] text-on-surface-variant font-medium">Pickup 12:10–12:20 PM</div><div class="bg-surface-container-low rounded p-2 text-[13px] space-y-0.5"><div>1x Paneer Wrap</div><div>1x Cold Coffee</div></div><button class="w-full py-1.5 bg-primary text-on-primary text-[14px] rounded-lg font-medium flex items-center justify-center gap-1"><span class="material-symbols-outlined text-[16px]">verified</span>Verify Collection</button></div><div class="bg-surface-container-lowest rounded-lg p-2.5 border border-outline-variant/40 shadow-sm flex flex-col gap-2"><div class="flex items-center justify-between"><span class="font-label-md text-[13px] font-bold text-on-surface">CB-1034</span><span class="text-[13px] font-bold text-primary">Paid ₹80</span></div><div class="text-[13px] text-error flex items-center justify-between"><span class="text-on-surface-variant font-medium">Pickup 12:10–12:20 PM</span><span class="flex items-center gap-0.5 text-[11px] font-medium"><span class="material-symbols-outlined text-[13px]">priority_high</span>Waiting 8m</span></div><div class="bg-surface-container-low rounded p-2 text-[13px]"><div>1x Aloo Patty Wrap</div></div><button class="w-full py-1.5 bg-surface-container border border-outline-variant text-on-surface text-[14px] rounded-lg font-medium hover:bg-secondary-container">Verify Collection</button></div></div></div><div class="flex flex-col bg-surface-container-low rounded-xl border border-outline-variant/40 p-2.5"><div class="flex items-center justify-between pb-2 border-b border-outline-variant/30 mb-2"><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-outline"></span><h3 class="font-label-md text-[13px] font-bold text-on-surface-variant truncate">Handed Over</h3></div><span class="px-1.5 py-0.2 bg-surface-container text-on-surface-variant rounded-full text-[11px] font-bold">42</span></div><div class="space-y-2.5"><div class="bg-surface-container-lowest/80 rounded-lg p-2.5 border border-outline-variant/30 flex flex-col gap-1.5"><div class="flex items-center justify-between"><span class="font-label-md text-[13px] font-semibold text-on-surface-variant">CB-1031</span><span class="text-[13px] font-medium text-on-surface-variant">₹120</span></div><div class="flex items-center justify-between text-[13px] text-on-surface-variant"><span>12:08 PM</span><span class="text-primary flex items-center gap-0.5"><span class="material-symbols-outlined text-[14px]">check</span>OTP OK</span></div></div><div class="bg-surface-container-lowest/80 rounded-lg p-2.5 border border-outline-variant/30 flex flex-col gap-1.5"><div class="flex items-center justify-between"><span class="font-label-md text-[13px] font-semibold text-on-surface-variant">CB-1030</span><span class="text-[13px] font-medium text-on-surface-variant">₹150</span></div><div class="flex items-center justify-between text-[13px] text-on-surface-variant"><span>12:02 PM</span><span class="text-primary flex items-center gap-0.5"><span class="material-symbols-outlined text-[14px]">check</span>OTP OK</span></div></div></div></div></div><div class="bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-3 shadow-sm flex items-center justify-between shrink-0"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-primary-container text-on-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[18px]">shield</span></div><div><div class="flex items-center gap-2"><h4 class="font-label-md text-[14px] font-bold text-on-surface">Verify Customer Pickup</h4><span class="text-[13px] text-primary font-semibold">CB-1036 • Rohan S. (₹180 • UPI)</span></div><p class="text-[13px] text-on-surface-variant">Ask student for their 6-digit pickup code</p></div></div><div class="flex items-center gap-3"><div class="flex gap-1.5"><div class="w-8 h-9 rounded-md border border-outline-variant bg-surface-container-low flex items-center justify-center font-bold text-on-surface-variant/40 text-[14px]">·</div><div class="w-8 h-9 rounded-md border border-outline-variant bg-surface-container-low flex items-center justify-center font-bold text-on-surface-variant/40 text-[14px]">·</div><div class="w-8 h-9 rounded-md border border-outline-variant bg-surface-container-low flex items-center justify-center font-bold text-on-surface-variant/40 text-[14px]">·</div><div class="w-8 h-9 rounded-md border border-outline-variant bg-surface-container-low flex items-center justify-center font-bold text-on-surface-variant/40 text-[14px]">·</div><div class="w-8 h-9 rounded-md border border-outline-variant bg-surface-container-low flex items-center justify-center font-bold text-on-surface-variant/40 text-[14px]">·</div><div class="w-8 h-9 rounded-md border border-outline-variant bg-surface-container-low flex items-center justify-center font-bold text-on-surface-variant/40 text-[14px]">·</div></div><button class="px-4 py-2 bg-surface-container text-on-surface-variant/50 text-[14px] rounded-lg font-medium opacity-75 border border-outline-variant/30 flex items-center gap-1.5 cursor-not-allowed" disabled=""><span class="material-symbols-outlined text-[16px]">task_alt</span>Confirm collection</button></div></div></div>
+</main>
+<!-- 5. RIGHT SLIDE-OVER DRAWER (340px) -->
+</div>
+</body></html>

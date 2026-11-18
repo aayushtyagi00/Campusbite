@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CampusBite - The Rolling Kitchen</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- DM Sans Font -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container-low": "#f5f4ee",
+            "surface-container": "#efeee8",
+            "surface-container-lowest": "#ffffff",
+            "on-secondary-fixed-variant": "#284e42",
+            "tertiary-fixed": "#ffdbd1",
+            "secondary": "#406659",
+            "secondary-container": "#c2ecdb",
+            "on-primary": "#ffffff",
+            "secondary-fixed-dim": "#a6cfc0",
+            "outline": "#707974",
+            "primary-fixed-dim": "#9ad2b9",
+            "on-secondary-container": "#466c5f",
+            "surface-tint": "#326853",
+            "on-primary-fixed": "#002116",
+            "on-error-container": "#93000a",
+            "primary-container": "#215844",
+            "on-tertiary-container": "#ffac95",
+            "on-surface-variant": "#404944",
+            "on-tertiary": "#ffffff",
+            "primary": "#01402e",
+            "inverse-on-surface": "#f2f1eb",
+            "tertiary-fixed-dim": "#ffb5a0",
+            "on-secondary-fixed": "#002018",
+            "error": "#ba1a1a",
+            "outline-variant": "#c0c9c2",
+            "secondary-fixed": "#c2ecdb",
+            "on-primary-fixed-variant": "#17503c",
+            "background": "#faf9f3",
+            "surface-dim": "#dbdad4",
+            "on-surface": "#1b1c19",
+            "inverse-surface": "#30312d",
+            "surface-container-high": "#e9e8e2",
+            "tertiary-container": "#952500",
+            "tertiary": "#6d1800",
+            "error-container": "#ffdad6",
+            "inverse-primary": "#9ad2b9",
+            "on-error": "#ffffff",
+            "surface": "#faf9f3",
+            "on-tertiary-fixed": "#3b0900",
+            "on-background": "#1b1c19",
+            "surface-variant": "#e3e3dd",
+            "on-primary-container": "#94ccb3",
+            "on-secondary": "#ffffff",
+            "primary-fixed": "#b6efd4",
+            "surface-container-highest": "#e3e3dd",
+            "on-tertiary-fixed-variant": "#872000",
+            "surface-bright": "#faf9f3"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "margin": "1rem",
+            "gutter-desktop": "1.5rem",
+            "space-sm": "0.5rem",
+            "gutter": "1rem",
+            "margin-desktop": "2.5rem",
+            "space-xl": "2.25rem",
+            "space-lg": "1.5rem",
+            "space-md": "1rem",
+            "margin-tablet": "1.5rem",
+            "space-xs": "0.25rem"
+          },
+          "fontFamily": {
+            "body-md": ["DM Sans"],
+            "label-md": ["DM Sans"],
+            "label-lg": ["DM Sans"],
+            "headline-lg": ["DM Sans"],
+            "headline-sm": ["DM Sans"],
+            "body-sm": ["DM Sans"],
+            "headline-md": ["DM Sans"],
+            "headline-xl-mobile": ["DM Sans"],
+            "headline-xl": ["DM Sans"],
+            "label-sm": ["DM Sans"],
+            "headline-lg-mobile": ["DM Sans"],
+            "body-lg": ["DM Sans"]
+          },
+          "fontSize": {
+            "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "600" }],
+            "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+            "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "headline-xl-mobile": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+            "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+            "headline-lg-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    /* Hide scrollbar for category horizontal scroll */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface antialiased min-h-screen flex flex-col font-body-md text-body-md selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- Mobile Max Container Simulation -->
+<div class="w-full max-w-md mx-auto min-h-screen bg-background relative flex flex-col pb-36 shadow-xl">
+<!-- Top Vendor Navigation Bar -->
+<header class="sticky top-0 z-40 bg-surface/95 backdrop-blur-md px-margin py-space-sm flex justify-between items-center shadow-sm">
+<div class="flex items-center space-x-2">
+<button aria-label="Go back" class="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-all text-primary" type="button">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<div>
+<h1 class="font-headline-sm text-headline-sm text-primary leading-tight">The Rolling Kitchen</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant">UniMall Food Court</p>
+</div>
+</div>
+<div class="flex items-center space-x-1">
+<button aria-label="Share stall" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-all text-on-surface-variant" type="button">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</button>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 px-margin space-y-space-md pt-space-xs">
+<!-- Vendor Hero Bento Card -->
+<section class="bg-surface-container-lowest rounded-xl p-space-md border border-outline-variant/30 shadow-[0px_2px_6px_rgba(22,61,50,0.04)] space-y-space-sm">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<div class="inline-flex items-center gap-1.5 bg-surface-container px-2.5 py-1 rounded-full">
+<span class="material-symbols-outlined text-secondary text-[16px]">storefront</span>
+<span class="font-label-md text-label-md text-secondary">Stall 04 · Level 1, UniMall</span>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary pt-1">The Rolling Kitchen</h2>
+</div>
+<div class="flex items-center gap-1 bg-[#f3f9f4] border border-[#cbe4d3] px-2.5 py-1 rounded-full">
+<span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+<span class="font-label-sm text-label-sm text-emerald-800">Open now</span>
+</div>
+</div>
+<div class="flex items-center gap-3 text-on-surface-variant pt-0.5"><div class="flex items-center gap-1.5 text-on-surface-variant"><span class="material-symbols-outlined text-[18px] text-secondary">schedule</span><span class="font-body-sm text-body-sm">10:30 AM – 9:00 PM</span></div></div>
+<!-- Cuisine Tags -->
+<div class="flex flex-wrap gap-1.5 pt-1">
+<span class="bg-surface-container-low text-on-surface-variant px-2.5 py-0.5 rounded-full font-label-sm text-label-sm">Wraps</span>
+<span class="bg-surface-container-low text-on-surface-variant px-2.5 py-0.5 rounded-full font-label-sm text-label-sm">Rolls</span>
+<span class="bg-surface-container-low text-on-surface-variant px-2.5 py-0.5 rounded-full font-label-sm text-label-sm">Fresh Bowls</span>
+<span class="bg-surface-container-low text-on-surface-variant px-2.5 py-0.5 rounded-full font-label-sm text-label-sm">LPU Specials</span>
+</div>
+<!-- Earliest Pickup Pill -->
+<div class="mt-2 bg-[#fdf5f2] border border-[#f5ccbe] rounded-lg p-2.5 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary-container text-[20px]">bolt</span>
+<div>
+<p class="font-label-sm text-label-sm text-tertiary font-bold tracking-tight">Earliest Pickup: 12:20 – 12:30 PM</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Choose a pickup window at checkout.</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-tertiary-container text-[18px]">schedule</span>
+</div>
+</section>
+<!-- Category Filter Tabs (Horizontal Scroll Pill Navigation) -->
+<section class="sticky top-[64px] z-30 bg-background/95 backdrop-blur-sm -mx-margin px-margin py-2 border-b border-outline-variant/20">
+<div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+<button class="whitespace-nowrap px-4 py-2 rounded-full font-label-md text-label-md transition-colors bg-primary-container text-on-primary shadow-sm" type="button">
+            All Items
+          </button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full font-label-md text-label-md transition-colors bg-surface-container text-on-surface-variant hover:bg-surface-container-high" type="button">
+            Rolls &amp; Wraps
+          </button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full font-label-md text-label-md transition-colors bg-surface-container text-on-surface-variant hover:bg-surface-container-high" type="button">
+            Sides &amp; Fries
+          </button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full font-label-md text-label-md transition-colors bg-surface-container text-on-surface-variant hover:bg-surface-container-high" type="button">
+            Beverages
+          </button>
+</div>
+</section>
+<!-- Menu Items List -->
+<section class="space-y-3 pt-1">
+<!-- Item 1: Paneer Tikka Wrap (Added State with Stepper) -->
+<article class="bg-surface-container-lowest rounded-xl p-space-md border border-outline-variant/30 shadow-[0px_2px_6px_rgba(22,61,50,0.04)] flex gap-3 items-center justify-between">
+<div class="flex-1 space-y-1 pr-1">
+<div class="flex items-center gap-1.5">
+<!-- Veg Badge -->
+<span class="inline-flex items-center justify-center w-4 h-4 border border-emerald-700 p-0.5 rounded-sm bg-white">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-700"></span>
+</span>
+<span class="font-label-sm text-label-sm text-primary font-semibold">Bestseller</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Paneer Tikka Wrap</h3>
+<p class="font-headline-sm text-headline-sm font-bold text-primary">₹120</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+              Tandoori marinated cottage cheese with mint chutney, crisp bell peppers &amp; onions in flaky paratha.
+            </p>
+</div>
+<div class="flex flex-col items-center gap-2 shrink-0">
+<div class="w-24 h-24 rounded-lg overflow-hidden relative bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A gourmet Indian paneer tikka wrap sliced diagonally, revealing vibrant grilled cottage cheese cubes, charred bell peppers, sliced onions, and dripping fresh emerald mint chutney wrapped in a flaky golden flatbread. Photographed with soft editorial studio lighting on an ivory speckled ceramic plate with a calm botanical atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrYcXYI3E5xfgorE7U9ZC_0R2oZKgwWHL3AIbCk39YYNs9WsiqCUOu0axVobboXA2tMkQmkCKHdG-aHmYRL9dxvsoomXHoD7ifZUz0KhZRnnqlIZmvgdNK0CudGFT_DjQA7i9sCc_oSUv76Uf2LrZXsZntF7BZlGiRhCatn5XHkiKvW2vbleuTeDQsmd6VsznoMPpDFKkwvPJ7-q-dmvf5BHsdkKYuLD_PSpw_xSCfhgDmaLGupyQyvfptJimvQWRDf1uV47IKiTIy"/>
+</div>
+<!-- Quantity Stepper Controls (Active: 1 selected) -->
+<div class="flex items-center justify-between w-24 h-10 bg-primary-container text-on-primary rounded-xl px-1.5 shadow-sm">
+<button aria-label="Decrease quantity" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-black/10 active:scale-95 transition-transform text-on-primary" type="button">
+<span class="material-symbols-outlined text-[16px]">remove</span>
+</button>
+<span class="font-label-md text-label-md font-bold text-on-primary">1</span>
+<button aria-label="Increase quantity" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-black/10 active:scale-95 transition-transform text-on-primary" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Item 2: Aloo Jeera Wrap (Add State) -->
+<article class="bg-surface-container-lowest rounded-xl p-space-md border border-outline-variant/30 shadow-[0px_2px_6px_rgba(22,61,50,0.04)] flex gap-3 items-center justify-between">
+<div class="flex-1 space-y-1 pr-1">
+<div class="flex items-center gap-1.5">
+<!-- Veg Badge -->
+<span class="inline-flex items-center justify-center w-4 h-4 border border-emerald-700 p-0.5 rounded-sm bg-white">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-700"></span>
+</span>
+<span class="font-label-sm text-label-sm text-secondary font-medium">UniMall Classic</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Aloo Tikki Wrap</h3>
+<p class="font-headline-sm text-headline-sm font-bold text-primary">₹80</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+              Spiced potato patty, tangy tamarind drizzle, crunchy fresh cabbage.
+            </p>
+</div>
+<div class="flex flex-col items-center gap-2 shrink-0">
+<div class="w-24 h-24 rounded-lg overflow-hidden relative bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A freshly toasted crispy aloo tikki wrap stuffed with golden spiced potato cutlet, purple cabbage ribbons, crunchy greens, and aromatic tamarind sauce. Captured in warm natural morning light against a clean rustic sage linen background, evoking modern university culinary packaging." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCP_prINJDB_mBzLu102-bnqB0Zy-eLL5PU6jAJQdwe31ziaVR6tUMODYG0T2zrpyCcfSVDNTYYNkSOqyBa_-FHNDFb7TSeMlniMO6PYkyrvFNxpcZxIKCN9qZkwvcs6sX4hN3EWS97ZlfhPbHlTSw_b7ne5fITUJ8xcvQ1SKE3Hh-C62Vv3XY5yAnShLp4cbxit_pxTIn9GYWEAG3JHSc_8GtibbCB8bnImp85qDZobfYrP47wdz5dsmsOTcEDMTmSIB2oqWcSF3bZ"/>
+</div>
+<!-- Min 48px height Add Button -->
+<button class="w-24 h-12 flex items-center justify-center gap-1 bg-surface-container-lowest border-1.5 border-primary text-primary rounded-xl font-label-lg text-label-lg font-bold hover:bg-surface-container-low active:scale-95 transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span>ADD</span>
+</button>
+</div>
+</article>
+<!-- Item 3: Masala Fries (Sold Out State) -->
+<article class="bg-surface-container-low/60 rounded-xl p-space-md border border-outline-variant/30 flex gap-3 items-center justify-between opacity-85">
+<div class="flex-1 space-y-1 pr-1">
+<div class="flex items-center gap-2">
+<!-- Veg Badge -->
+<span class="inline-flex items-center justify-center w-4 h-4 border border-emerald-700 p-0.5 rounded-sm bg-white">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-700"></span>
+</span>
+<span class="bg-surface-variant text-outline px-2 py-0.5 rounded font-label-sm text-label-sm font-bold tracking-wider">
+                SOLD OUT
+              </span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-outline font-semibold">Masala Crispy Fries</h3>
+<p class="font-headline-sm text-headline-sm font-bold text-outline">₹60</p>
+<p class="font-body-sm text-body-sm text-outline/80 line-clamp-2">
+              Golden crisp potato fries tossed in spicy peri-peri chaat masala.
+            </p>
+</div>
+<div class="flex flex-col items-center gap-2 shrink-0">
+<div class="w-24 h-24 rounded-lg overflow-hidden relative bg-surface-container filter grayscale-[60%]">
+<img class="w-full h-full object-cover" data-alt="A serving of golden french fries coated in fragrant red peri peri spice dust in a sustainable paper cone. Styled in subtle warm shadows with minimalist deep green accents on an organic ivory countertop, portraying a calm campus dining experience." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOWhhLUyI72lTu-oLk6j-4O4L4Gk40cFRRdkTjgKsnMf_70OC3NgbJs6JxAPb_8vo7Lvy9h4GXubPcF9GKVTbaoSnmc5Z0MLd1-WdVS8EM39nnfCxNFC29T7f8_0Etv8cZBcvfohKEk_j8IjYxG_kWr2RPdZj1HFa45uGL548zc8EaRHhnmz3NolUmMS9UL5b61UXSpYNxCIfm4eXE4GAu7s8zf2X3yNQ34BpTFBr3TSnD1MivEqrDZ1i9Ns9ybl8E5Fyw_4GGVhD1"/>
+</div>
+<button class="w-24 h-12 flex items-center justify-center bg-surface-container-high text-outline rounded-xl font-label-md text-label-md cursor-not-allowed" disabled="" type="button">
+              Sold out
+            </button>
+</div>
+</article>
+<!-- Item 4: Kulhad Masala Chai -->
+<article class="bg-surface-container-lowest rounded-xl p-space-md border border-outline-variant/30 shadow-[0px_2px_6px_rgba(22,61,50,0.04)] flex gap-3 items-center justify-between">
+<div class="flex-1 space-y-1 pr-1">
+<div class="flex items-center gap-1.5">
+<!-- Veg Badge -->
+<span class="inline-flex items-center justify-center w-4 h-4 border border-emerald-700 p-0.5 rounded-sm bg-white">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-700"></span>
+</span>
+<span class="font-label-sm text-label-sm text-tertiary font-medium">Hot Favorite</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Special Kulhad Chai</h3>
+<p class="font-headline-sm text-headline-sm font-bold text-primary">₹30</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+              Freshly brewed ginger-cardamom tea.
+            </p>
+</div>
+<div class="flex flex-col items-center gap-2 shrink-0">
+<div class="w-24 h-24 rounded-lg overflow-hidden relative bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Steaming Indian masala tea served in an authentic handcrafted earthen terracotta kulhad cup. A delicate cloud of aromatic steam rises against a serene ivory and deep forest green composition with dried cardamom and ginger slices beside it." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7pU3tZZNUj1-CfOPz6MrrgkxU5gqq2j1AELqDh31ew9cIr8Xm_9q5rsPGTpy12ikszP5-o0Tx_OMDDR9a-PRiGApAN9poqEcUZSK-B75th-w9Pie8ApsyoAXAcb5l_iOIIfHMklifz0oaWSXXPra2m08dj9J2s75wj6mCE9zu4Bo-gzlOe4iDfd56m0E3A1_qs3o0GV51aTGfpAIxSAeGL2_PUCQOHaM3kkXMFHnNAIgKLrSDk7ovQcCY0-rPMs4HQkWroedyPAdS"/>
+</div>
+<!-- Min 48px height Add Button -->
+<button class="w-24 h-12 flex items-center justify-center gap-1 bg-surface-container-lowest border-1.5 border-primary text-primary rounded-xl font-label-lg text-label-lg font-bold hover:bg-surface-container-low active:scale-95 transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span>ADD</span>
+</button>
+</div>
+</article>
+</section>
+<!-- Campus Pickup Guarantee Note -->
+<section class="p-3 bg-surface-container rounded-xl flex items-center gap-3"><span class="material-symbols-outlined text-primary text-[24px]">storefront</span><div class="flex-1"><h4 class="font-label-md text-label-md text-primary font-bold">Collect at the counter</h4><p class="font-body-sm text-body-sm text-on-surface-variant">Present your pickup code at Stall 04 when your order is ready.</p></div></section>
+</main>
+<!-- Bottom Sticky Floating Bar Stack: Cart Action Bar + Shared BottomNavBar -->
+<div class="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto pointer-events-none">
+<div class="p-margin space-y-2 pointer-events-auto">
+<!-- Fixed "View Cart" Action Bar (min 48px height, deep green with white bold text) -->
+<a class="flex items-center justify-between h-14 px-5 bg-primary text-on-primary rounded-2xl shadow-[0px_8px_24px_rgba(22,61,50,0.18)] active:scale-[0.98] transition-transform duration-150" href="#cart"><div class="flex items-center gap-2.5"><span class="material-symbols-outlined text-[20px]">shopping_bag</span><span class="font-label-lg text-label-lg font-bold tracking-tight">View Cart (2 items • ₹150)</span></div><div class="flex items-center gap-1 font-label-lg text-label-lg font-bold"><span>Next</span><span class="material-symbols-outlined text-[20px]">arrow_forward</span></div></a>
+</div>
+<!-- Shared Bottom Navigation Bar (Explore is Active) -->
+<nav class="pointer-events-auto bg-surface-container-lowest dark:bg-surface-container-low flex justify-around items-center px-margin py-space-xs pb-safe shadow-[0px_-2px_10px_rgba(22,61,50,0.06)] dark:shadow-none">
+<!-- Explore (Active based on Shared Components JSON) -->
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-primary-container text-on-secondary-container dark:text-on-primary-container rounded-full px-space-md py-space-xs font-semibold active:scale-95 transition-transform duration-150" href="#explore">
+<span class="material-symbols-outlined text-[22px]">explore</span>
+<span class="font-label-sm text-label-sm">Explore</span>
+</a>
+<!-- Orders -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-space-md py-space-xs hover:text-primary dark:hover:text-primary-fixed transition-colors duration-150 active:scale-95" href="#orders">
+<span class="material-symbols-outlined text-[22px]">receipt_long</span>
+<span class="font-label-sm text-label-sm">Orders</span>
+</a>
+<!-- Account -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-space-md py-space-xs hover:text-primary dark:hover:text-primary-fixed transition-colors duration-150 active:scale-95" href="#account">
+<span class="material-symbols-outlined text-[22px]">person</span>
+<span class="font-label-sm text-label-sm">Account</span>
+</a>
+</nav>
+</div>
+</div>
+</body></html>

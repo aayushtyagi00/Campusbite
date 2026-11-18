@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CampusBite — UniMall Food Court, LPU</title>
+<!-- Google Fonts: DM Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration verbatim from Design System -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-dim": "#dbdad4",
+            "on-primary-fixed-variant": "#17503c",
+            "background": "#faf9f3",
+            "on-surface-variant": "#404944",
+            "surface-container-high": "#e9e8e2",
+            "on-surface": "#1b1c19",
+            "tertiary-fixed-dim": "#ffb5a0",
+            "secondary-container": "#c2ecdb",
+            "on-secondary-fixed-variant": "#284e42",
+            "surface-container-highest": "#e3e3dd",
+            "secondary-fixed-dim": "#a6cfc0",
+            "on-tertiary-container": "#ffac95",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#f5f4ee",
+            "primary-fixed": "#b6efd4",
+            "on-tertiary": "#ffffff",
+            "error-container": "#ffdad6",
+            "on-tertiary-fixed": "#3b0900",
+            "on-primary-container": "#94ccb3",
+            "inverse-primary": "#9ad2b9",
+            "on-error-container": "#93000a",
+            "on-primary": "#ffffff",
+            "on-background": "#1b1c19",
+            "on-tertiary-fixed-variant": "#872000",
+            "outline": "#707974",
+            "surface-container": "#efeee8",
+            "on-secondary-fixed": "#002018",
+            "tertiary": "#6d1800",
+            "inverse-on-surface": "#f2f1eb",
+            "primary": "#01402e",
+            "outline-variant": "#c0c9c2",
+            "on-primary-fixed": "#002116",
+            "primary-fixed-dim": "#9ad2b9",
+            "primary-container": "#215844",
+            "surface-variant": "#e3e3dd",
+            "on-secondary": "#ffffff",
+            "secondary-fixed": "#c2ecdb",
+            "tertiary-fixed": "#ffdbd1",
+            "on-error": "#ffffff",
+            "surface-bright": "#faf9f3",
+            "error": "#ba1a1a",
+            "secondary": "#406659",
+            "tertiary-container": "#952500",
+            "on-secondary-container": "#466c5f",
+            "surface-tint": "#326853",
+            "inverse-surface": "#30312d",
+            "surface": "#faf9f3"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "margin-desktop": "2.5rem",
+            "space-xl": "2.25rem",
+            "gutter": "1rem",
+            "gutter-desktop": "1.5rem",
+            "space-lg": "1.5rem",
+            "space-xs": "0.25rem",
+            "space-sm": "0.5rem",
+            "margin": "1rem",
+            "margin-tablet": "1.5rem",
+            "space-md": "1rem"
+          },
+          "fontFamily": {
+            "body-sm": ["DM Sans"],
+            "headline-xl-mobile": ["DM Sans"],
+            "headline-sm": ["DM Sans"],
+            "label-md": ["DM Sans"],
+            "headline-md": ["DM Sans"],
+            "label-sm": ["DM Sans"],
+            "label-lg": ["DM Sans"],
+            "headline-xl": ["DM Sans"],
+            "body-md": ["DM Sans"],
+            "headline-lg-mobile": ["DM Sans"],
+            "body-lg": ["DM Sans"],
+            "headline-lg": ["DM Sans"]
+          },
+          "fontSize": {
+            "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "headline-xl-mobile": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "600" }],
+            "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+            "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+            "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+            "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "headline-lg-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    body {
+      background-color: #faf9f3;
+      font-family: 'DM Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    /* Hide scrollbar for category pills while allowing touch scroll */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface flex justify-center min-h-screen">
+<!-- Mobile Viewport Container locked to 390px canonical width -->
+<div class="w-full max-w-[390px] min-h-screen bg-background relative flex flex-col pb-36 shadow-xl">
+<!-- 1. Shared Component: TopAppBar -->
+<header class="docked full-width top-0 sticky z-40 bg-surface flex justify-between items-center w-full px-margin py-space-sm shadow-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="storefront">storefront</span>
+<div class="flex items-baseline gap-1">
+<span class="font-headline-sm text-headline-sm font-bold text-primary tracking-tight">campusbite</span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+</div>
+</div>
+<!-- Campus Location Pill -->
+<button class="flex items-center gap-1.5 bg-surface-container-low border border-outline-variant/50 rounded-full py-1 px-2.5 active:scale-95 transition-transform duration-150">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="font-label-md text-label-md text-primary font-semibold">LPU · UniMall</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]" data-icon="expand_more">expand_more</span>
+</button>
+<!-- Quick Action / Alerts -->
+<button aria-label="Notifications" class="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors duration-150 active:scale-95 relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-tertiary-container ring-2 ring-surface"></span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col px-margin pt-space-md gap-space-lg">
+<!-- 2. Editorial Hero Section -->
+<section class="flex flex-col gap-2">
+<!-- Pilot Status Badge -->
+<div class="inline-flex items-center gap-2 self-start bg-secondary-container/40 border border-secondary-fixed px-2.5 py-1 rounded-full">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container animate-pulse"></span>
+<span class="font-label-sm text-label-sm text-on-secondary-fixed-variant">UniMall Food Court Pilot · 3 Stalls Live</span>
+</div>
+<div class="mt-1">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-tight">
+            Your break. <br/>
+<span class="font-normal italic text-on-surface">Made delicious.</span>
+</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">
+            Order ahead. Pick up fresh between classes.
+          </p>
+</div>
+</section>
+<!-- 3. Search Bar & Horizontal Category Filter -->
+<section class="flex flex-col gap-3">
+<!-- Search Input -->
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3.5 text-on-surface-variant text-[20px]" data-icon="search">search</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant/60 rounded-xl py-3 pl-10 pr-11 font-body-md text-body-md text-primary placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary-container focus:ring-0 transition-colors" placeholder="Find a stall or a dish" type="text"/>
+<button aria-label="Filters" class="absolute right-2.5 p-1.5 text-on-surface-variant hover:text-primary active:scale-95">
+<span class="material-symbols-outlined text-[20px]" data-icon="tune">tune</span>
+</button>
+</div>
+<!-- Category Horizontal Pills -->
+<div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 -mx-margin px-margin">
+<button class="shrink-0 bg-primary-container text-on-primary font-label-md text-label-md px-4 py-2 rounded-full font-semibold shadow-sm">
+            All
+          </button>
+<button class="shrink-0 bg-surface-container-lowest border border-outline-variant/60 text-primary font-label-md text-label-md px-4 py-2 rounded-full hover:bg-surface-container transition-colors">
+            Meals
+          </button>
+<button class="shrink-0 bg-surface-container-lowest border border-outline-variant/60 text-primary font-label-md text-label-md px-4 py-2 rounded-full hover:bg-surface-container transition-colors">
+            Wraps
+          </button>
+<button class="shrink-0 bg-surface-container-lowest border border-outline-variant/60 text-primary font-label-md text-label-md px-4 py-2 rounded-full hover:bg-surface-container transition-colors">
+            Drinks
+          </button>
+<button class="shrink-0 bg-surface-container-lowest border border-outline-variant/60 text-primary font-label-md text-label-md px-4 py-2 rounded-full hover:bg-surface-container transition-colors">
+            Snacks
+          </button>
+</div>
+</section>
+<!-- 4. Pick Up Between Classes Header -->
+<section class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<h2 class="font-headline-sm text-headline-sm text-primary">Available Stalls (3)</h2>
+<button aria-label="Information on pickup" class="text-on-surface-variant/70 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="info">info</span>
+</button>
+</div>
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider">Campus Pickup</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          Scheduled Self-Pickup Only — Skip counter queues
+        </p>
+</section>
+<!-- 5. 3 Specific Feature Stall Cards -->
+<section class="flex flex-col gap-4">
+<!-- Card 1: The Rolling Kitchen -->
+<article class="bg-surface-container-lowest border border-outline-variant/50 rounded-[18px] overflow-hidden shadow-[0px_2px_8px_rgba(22,61,50,0.04)] flex flex-col active:border-primary-container transition-colors duration-150">
+<div class="relative h-36 w-full overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Appetizing warm grilled flatbread wraps filled with marinated paneer, crunchy vegetables, and mint chutney arranged neatly on an artisanal parchment tray. Minimalist food studio photography with warm overhead lighting, rich earthy green textures, and ivory tones fitting a clean dining aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfw4vgdvLaPiS31gbjdsz68IA6Iq2KUASSDj9FFy7I3c5qUXaQ8-JQR81IjRqlP3i0IO_eHa2zUpODWik_2vVnA_Cjsy_nbNDynYKqDeUE5OBMLR8sIv04e0E1ltypOvGiUwVLKCSEioS3TJP3KUTD9Lpo8twNbXGPa9ZVJhbA7odvyEpvGbgxsAO6fh1Xz30bCsp5OrUr55VnPS7_LaeUJNAzkFldrXx6JaIm1kk4znCnVY-P_H50Te9KHLNVpZLZ4Zd8rnH1VLwT"/>
+<!-- Stall Identifier Pill -->
+<div class="absolute top-3 left-3 bg-surface-container-lowest/95 backdrop-blur-sm px-2.5 py-1 rounded-full border border-outline-variant/40 flex items-center gap-1.5 shadow-sm">
+<span class="font-label-sm text-label-sm font-semibold text-primary">Stall 04</span>
+<span class="text-outline text-body-sm leading-none">•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Level 1, UniMall</span>
+</div>
+<!-- Live Status -->
+<div class="absolute top-3 right-3 bg-surface-container-lowest/95 backdrop-blur-sm px-2 py-0.5 rounded-full border border-outline-variant/40 flex items-center gap-1.5 shadow-sm">
+<span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+<span class="font-label-sm text-label-sm font-medium text-primary">Open now</span>
+</div>
+</div>
+<div class="p-3.5 flex flex-col gap-2.5">
+<div class="flex items-start justify-between">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-primary">The Rolling Kitchen</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Wraps, Bowls &amp; Rolls</p>
+</div>
+<span class="font-label-lg text-label-lg font-bold text-primary">From ₹80</span>
+</div>
+<!-- Earliest Pickup Window Chip -->
+<div class="bg-secondary-container/30 border border-secondary-container rounded-xl px-3 py-2 flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-primary">
+<span class="material-symbols-outlined text-[16px] text-tertiary-container" data-icon="bolt">bolt</span>
+<span class="font-label-md text-label-md font-semibold">Pickup 12:20 – 12:30 PM</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-secondary-fixed-variant font-medium">Slot Ready</span>
+</div>
+<!-- Popular Preview Item Tags -->
+<div class="flex items-center gap-1.5 pt-0.5">
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant" data-icon="restaurant">restaurant</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">
+                Paneer Tikka Roll, Mexican Rice Bowl
+              </span>
+</div>
+</div>
+</article>
+<!-- Card 2: Chai & Co -->
+<article class="bg-surface-container-lowest border border-outline-variant/50 rounded-[18px] overflow-hidden shadow-[0px_2px_8px_rgba(22,61,50,0.04)] flex flex-col active:border-primary-container transition-colors duration-150">
+<div class="relative h-36 w-full overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Steaming artisanal masala chai served in traditional clay kulhad cups alongside a toasted buttery bun maska sprinkled with herbs. Natural soft daylight, minimal tabletop setting with muted olive sage tablecloth and subtle terracotta accents, editorial Indian cafe feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6eUna8udb0lAiCku1bb7x9QInKk9dS1iD4K-Kji7k7WMKaMKspoM2gW6mAvV2dVE1w3Yw6p-bdbmQpl5spk03AGNGckPmLMHRhWZ502VDevkscnPo5h1PTYMezs6yJ3T3FPDp083srSgYBGQ62OSTDZAuE6HSZS7rOIU7do4VnxjWsvO0s3UT7lvWwqNSEld9ryFkBqDB_0AoKxP4ZErM3KBCWUa8Bhp0rHqydbjLqC4J3AQaMLunqj2PezXGj98kHWLt2XIn2ium"/>
+<!-- Stall Identifier Pill -->
+<div class="absolute top-3 left-3 bg-surface-container-lowest/95 backdrop-blur-sm px-2.5 py-1 rounded-full border border-outline-variant/40 flex items-center gap-1.5 shadow-sm">
+<span class="font-label-sm text-label-sm font-semibold text-primary">Stall 07</span>
+<span class="text-outline text-body-sm leading-none">•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Central Atrium</span>
+</div>
+<!-- Live Status -->
+<div class="absolute top-3 right-3 bg-surface-container-lowest/95 backdrop-blur-sm px-2 py-0.5 rounded-full border border-outline-variant/40 flex items-center gap-1.5 shadow-sm">
+<span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+<span class="font-label-sm text-label-sm font-medium text-primary">Open now</span>
+</div>
+</div>
+<div class="p-3.5 flex flex-col gap-2.5">
+<div class="flex items-start justify-between">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-primary">Chai &amp; Co</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Fresh Chai, Bun Maska &amp; Snacks</p>
+</div>
+<span class="font-label-lg text-label-lg font-bold text-primary">From ₹35</span>
+</div>
+<!-- Earliest Pickup Window Chip -->
+<div class="bg-secondary-container/30 border border-secondary-container rounded-xl px-3 py-2 flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-primary">
+<span class="material-symbols-outlined text-[16px] text-tertiary-container" data-icon="bolt">bolt</span>
+<span class="font-label-md text-label-md font-semibold">Pickup 12:15 – 12:25 PM</span>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary-container font-semibold">Fastest</span>
+</div>
+<!-- Popular Preview Item Tags -->
+<div class="flex items-center gap-1.5 pt-0.5">
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant" data-icon="restaurant">restaurant</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">
+                Adrak Elaichi Chai, Samosa Pav
+              </span>
+</div>
+</div>
+</article>
+<!-- Card 3: Punjab Plate -->
+<article class="bg-surface-container-lowest border border-outline-variant/50 rounded-[18px] overflow-hidden shadow-[0px_2px_8px_rgba(22,61,50,0.04)] flex flex-col active:border-primary-container transition-colors duration-150">
+<div class="relative h-36 w-full overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="An authentic North Indian mini thali featuring rich slow-cooked dal makhani, golden Amritsari stuffed kulcha bread, spiced pickled onions, and fresh curd in sleek ceramic bowls. Warm rustic studio presentation with botanical greenery in background and clean natural morning lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMI7HK1awZ6BGv1gwSNKC5T07q_tISX3AUROyxKusuJcQnpdOFkYASvc6VeVnXKz7YUeiCAyDXA45zIVQ_Kxl-Rkwe-11aqfHNbw73WqFwxypP0tHXCsenTOIZiYF2TqDusQdVUGLJsiSM1uc-RNeohHydNZCQDGi8UZNUqWyNXQvhYgnWCw0qUvPxLwyiXwLZghQYxtVRgDxpnXcr0HQirKRsC0xrpj7-52f8hjXclPhnQsKIrR4ASS9pix4uB4UI9dTsJ20w82cU"/>
+<!-- Stall Identifier Pill -->
+<div class="absolute top-3 left-3 bg-surface-container-lowest/95 backdrop-blur-sm px-2.5 py-1 rounded-full border border-outline-variant/40 flex items-center gap-1.5 shadow-sm">
+<span class="font-label-sm text-label-sm font-semibold text-primary">Stall 02</span>
+<span class="text-outline text-body-sm leading-none">•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">North Wing</span>
+</div>
+<!-- Live Status -->
+<div class="absolute top-3 right-3 bg-surface-container-lowest/95 backdrop-blur-sm px-2 py-0.5 rounded-full border border-outline-variant/40 flex items-center gap-1.5 shadow-sm">
+<span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+<span class="font-label-sm text-label-sm font-medium text-primary">Open now</span>
+</div>
+</div>
+<div class="p-3.5 flex flex-col gap-2.5">
+<div class="flex items-start justify-between">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-primary">Punjab Plate</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">North Indian Thalis &amp; Quick Combos</p>
+</div>
+<span class="font-label-lg text-label-lg font-bold text-primary">From ₹119</span>
+</div>
+<!-- Earliest Pickup Window Chip -->
+<div class="bg-secondary-container/30 border border-secondary-container rounded-xl px-3 py-2 flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-primary">
+<span class="material-symbols-outlined text-[16px] text-tertiary-container" data-icon="bolt">bolt</span>
+<span class="font-label-md text-label-md font-semibold">Pickup 12:30 – 12:40 PM</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-secondary-fixed-variant font-medium">Standard Slot</span>
+</div>
+<!-- Popular Preview Item Tags -->
+<div class="flex items-center gap-1.5 pt-0.5">
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant" data-icon="restaurant">restaurant</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">
+                Dal Makhani Combo, Amritsari Kulcha
+              </span>
+</div>
+</div>
+</article>
+</section>
+<!-- Campus Logistics Assurance Card -->
+<section class="bg-surface-container-low border border-outline-variant/40 rounded-xl p-3.5 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container/60 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[20px]" data-icon="info">info</span>
+</div>
+<div>
+<h4 class="font-label-md text-label-md text-primary font-bold">Plan your next break</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+Choose a pickup window and track your order in the app.
+</p>
+</div>
+</section>
+</main>
+<!-- 6. Sticky Floating Active Cart Banner (Positioned above BottomNavBar) -->
+<div class="fixed bottom-16 left-0 right-0 max-w-[390px] mx-auto px-margin pb-2 z-40 pointer-events-auto">
+<div class="bg-surface-container-lowest border border-outline-variant/60 rounded-2xl p-2.5 shadow-[0px_8px_24px_rgba(22,61,50,0.12)] flex items-center justify-between">
+<div class="flex items-center gap-2.5 pl-1.5">
+<div class="w-9 h-9 rounded-xl bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]" data-icon="shopping_bag">shopping_bag</span>
+</div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="font-label-md text-label-md font-bold text-primary">2 items</span>
+<span class="text-outline text-body-sm leading-none">•</span>
+<span class="font-label-md text-label-md font-bold text-primary">₹150</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-[11px] leading-tight">The Rolling Kitchen</p>
+</div>
+</div>
+<button class="bg-primary-container text-on-primary font-label-md text-label-md px-3.5 py-2.5 rounded-xl font-semibold flex items-center gap-1 active:scale-95 transition-transform duration-150">
+<span>Pickup Slot</span>
+<span class="material-symbols-outlined text-[16px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- 7. Shared Component: BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-margin py-space-xs pb-safe bg-surface-container-lowest shadow-[0px_-2px_10px_rgba(22,61,50,0.06)] max-w-[390px] mx-auto right-0">
+<!-- Destination 1: Explore (ACTIVE) -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-space-md py-space-xs font-semibold active:scale-95 transition-transform duration-150" href="#explore">
+<span class="material-symbols-outlined" data-icon="explore">explore</span>
+<span class="font-label-sm text-label-sm">Explore</span>
+</a>
+<!-- Destination 2: Orders (INACTIVE) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-space-md py-space-xs hover:text-primary transition-colors duration-150 active:scale-95" href="#orders">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-label-sm text-label-sm">Orders</span>
+</a>
+<!-- Destination 3: Account (INACTIVE) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-space-md py-space-xs hover:text-primary transition-colors duration-150 active:scale-95" href="#account">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Account</span>
+</a>
+</nav>
+</div>
+</body></html>

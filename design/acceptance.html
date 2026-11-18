@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CampusBite - Order Status</title>
+<!-- Material Symbols Outlined font -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: DM Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS with forms and container-queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container": "#efeee8",
+            "on-error-container": "#93000a",
+            "on-primary-container": "#94ccb3",
+            "error": "#ba1a1a",
+            "primary": "#01402e",
+            "surface-variant": "#e3e3dd",
+            "on-surface": "#1b1c19",
+            "surface": "#faf9f3",
+            "secondary-container": "#c2ecdb",
+            "tertiary": "#6d1800",
+            "background": "#faf9f3",
+            "tertiary-fixed": "#ffdbd1",
+            "inverse-on-surface": "#f2f1eb",
+            "on-primary": "#ffffff",
+            "outline-variant": "#c0c9c2",
+            "primary-fixed": "#b6efd4",
+            "on-tertiary-container": "#ffac95",
+            "tertiary-fixed-dim": "#ffb5a0",
+            "on-error": "#ffffff",
+            "surface-container-low": "#f5f4ee",
+            "on-tertiary": "#ffffff",
+            "on-secondary-fixed": "#002018",
+            "on-tertiary-fixed-variant": "#872000",
+            "secondary-fixed-dim": "#a6cfc0",
+            "inverse-surface": "#30312d",
+            "surface-container-highest": "#e3e3dd",
+            "surface-container-lowest": "#ffffff",
+            "secondary-fixed": "#c2ecdb",
+            "on-background": "#1b1c19",
+            "on-surface-variant": "#404944",
+            "on-tertiary-fixed": "#3b0900",
+            "surface-bright": "#faf9f3",
+            "on-secondary": "#ffffff",
+            "on-primary-fixed": "#002116",
+            "on-primary-fixed-variant": "#17503c",
+            "on-secondary-fixed-variant": "#284e42",
+            "surface-dim": "#dbdad4",
+            "surface-tint": "#326853",
+            "on-secondary-container": "#466c5f",
+            "outline": "#707974",
+            "tertiary-container": "#952500",
+            "primary-container": "#215844",
+            "secondary": "#406659",
+            "inverse-primary": "#9ad2b9",
+            "primary-fixed-dim": "#9ad2b9",
+            "error-container": "#ffdad6",
+            "surface-container-high": "#e9e8e2"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "gutter-desktop": "1.5rem",
+            "space-xs": "0.25rem",
+            "space-sm": "0.5rem",
+            "margin-tablet": "1.5rem",
+            "space-md": "1rem",
+            "gutter": "1rem",
+            "margin-desktop": "2.5rem",
+            "space-lg": "1.5rem",
+            "space-xl": "2.25rem",
+            "margin": "1rem"
+          },
+          "fontFamily": {
+            "body-lg": ["DM Sans"],
+            "headline-md": ["DM Sans"],
+            "label-md": ["DM Sans"],
+            "body-md": ["DM Sans"],
+            "headline-sm": ["DM Sans"],
+            "headline-lg-mobile": ["DM Sans"],
+            "label-lg": ["DM Sans"],
+            "body-sm": ["DM Sans"],
+            "headline-lg": ["DM Sans"],
+            "label-sm": ["DM Sans"],
+            "headline-xl": ["DM Sans"],
+            "headline-xl-mobile": ["DM Sans"]
+          },
+          "fontSize": {
+            "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "600" }],
+            "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "headline-lg-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+            "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+            "headline-xl-mobile": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    @keyframes subtle-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.88; transform: scale(1.02); }
+    }
+    .animate-subtle-pulse {
+      animation: subtle-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface antialiased min-h-screen flex flex-col font-body-md text-body-md selection:bg-secondary-container selection:text-primary">
+<!-- Top App Bar (Custom Order CB-1042 variant matching style guidance tokens) -->
+<header class="docked full-width top-0 sticky z-40 bg-surface border-b border-outline-variant/40 shadow-sm">
+<div class="max-w-md mx-auto flex items-center justify-between px-margin py-space-sm w-full">
+<div class="flex items-center gap-space-sm">
+<button aria-label="Go back" class="p-space-xs -ml-1 text-on-surface rounded-full hover:bg-surface-container transition-colors active:scale-95 duration-150 flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[22px]">arrow_back</span>
+</button>
+<div>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary tracking-tight">Order CB-1042</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px] text-primary">storefront</span>
+            UniMall Food Court
+          </p>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-label-sm font-label-sm bg-surface-container-high text-primary font-semibold border border-outline-variant/30">
+          Live Status
+        </span>
+</div>
+</div>
+</header>
+<!-- Main Scrollable Content Canvas -->
+<main class="flex-1 w-full max-w-md mx-auto px-margin pt-space-md pb-28 space-y-space-md">
+<!-- Status Hero Banner & Countdown Card -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/40 p-space-md shadow-[0px_2px_6px_rgba(22,61,50,0.04)] relative overflow-hidden">
+<!-- Ambient Decorative Backdrop -->
+<div class="absolute -right-8 -top-8 w-28 h-28 bg-secondary-container/30 rounded-full blur-xl pointer-events-none"></div>
+<!-- Top countdown status row -->
+<div class="flex items-start justify-between gap-space-sm">
+<div class="space-y-1">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">Stall Acceptance Window</span>
+<h2 class="font-headline-sm text-headline-sm font-bold text-primary leading-tight">
+            Waiting for stall response
+          </h2>
+</div>
+<!-- Pulsing Timer Badge -->
+<div class="animate-subtle-pulse flex items-center gap-1.5 px-space-sm py-1 rounded-full bg-secondary-container text-on-secondary-container border border-primary/20 shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">timer</span>
+<span class="font-headline-sm text-headline-sm font-bold text-primary tracking-tight" id="countdown-display">01:12</span>
+</div>
+</div>
+<p class="mt-space-sm text-body-md font-body-md text-on-surface-variant leading-relaxed">Payment received. Waiting for the stall to accept.</p>
+<!-- Two-Step Status Flow Badges -->
+<div class="mt-space-md pt-space-md border-t border-surface-container-high grid grid-cols-1 gap-2.5">
+<!-- Step 1: Payment Verified -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low border border-secondary-fixed-dim/40">
+<div class="flex items-center gap-2.5">
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[15px]" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-primary font-semibold">Payment: Verified</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">₹150 via UPI • Instant Confirmation</p>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-primary font-medium px-2 py-0.5 bg-secondary-container/60 rounded">PAID</span>
+</div>
+<!-- Step 2: Stall Acceptance (In Progress) -->
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-high/60 border border-outline-variant/30">
+<div class="flex items-center gap-2.5">
+<div class="w-6 h-6 rounded-full bg-tertiary-fixed text-tertiary flex items-center justify-center shrink-0 animate-pulse">
+<span class="material-symbols-outlined text-[15px]" style="font-variation-settings: 'FILL' 1;">schedule</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-semibold">Vendor: Awaiting Acceptance</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Waiting for a response</p>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary font-bold tracking-tight px-2 py-0.5 bg-tertiary-fixed/70 rounded">PENDING</span>
+</div>
+</div>
+</div>
+<!-- Pickup Code Gate / Security Notice -->
+<div class="bg-surface-container-low rounded-xl border border-dashed border-outline-variant/70 p-space-md text-center space-y-2">
+<div class="w-10 h-10 mx-auto rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">lock</span>
+</div>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface font-bold">Pickup code locked until stall accepts</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Your six-digit pickup code appears after the stall accepts.</p>
+</div>
+</div>
+<!-- Stall & Pickup Details Card -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant/40 p-space-md shadow-[0px_2px_6px_rgba(22,61,50,0.04)] space-y-space-md">
+<!-- Stall Info Header -->
+<div class="flex items-start justify-between">
+<div>
+<div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-label-sm font-label-sm font-semibold mb-1"><span class="material-symbols-outlined text-[13px]">location_on</span> UniMall · Level 1 · Stall 04</div>
+<h3 class="font-headline-sm text-headline-sm font-bold text-primary">The Rolling Kitchen</h3>
+</div>
+</div>
+<!-- Proposed Window Chip -->
+<div class="p-space-sm bg-surface rounded-lg border border-outline-variant/30 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="p-1.5 bg-surface-container rounded-md text-primary">
+<span class="material-symbols-outlined text-[18px]">access_time</span>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Proposed Pickup Slot</p>
+<p class="font-label-lg text-label-lg text-primary font-bold">12:20 – 12:30 PM</p>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container-low px-2 py-1 rounded">In ~15 mins</span>
+</div>
+<!-- Order Items Summary List -->
+<div class="space-y-space-xs pt-1">
+<div class="flex items-center justify-between text-body-sm font-body-sm py-1 border-b border-surface-container">
+<div class="flex items-center gap-2">
+<span class="w-3.5 h-3.5 border border-primary text-primary flex items-center justify-center text-[8px] rounded-[2px] font-bold">●</span>
+<span class="text-on-surface font-medium">1x Paneer Tikka Wrap</span>
+</div>
+<span class="text-on-surface font-semibold">₹120</span>
+</div>
+<div class="flex items-center justify-between text-body-sm font-body-sm py-1 border-b border-surface-container">
+<div class="flex items-center gap-2">
+<span class="w-3.5 h-3.5 border border-primary text-primary flex items-center justify-center text-[8px] rounded-[2px] font-bold">●</span>
+<span class="text-on-surface font-medium">1x Special Kulhad Chai</span>
+</div>
+<span class="text-on-surface font-semibold">₹30</span>
+</div>
+<div class="flex items-center justify-between pt-2">
+<span class="font-label-md text-label-md text-on-surface-variant">Total Paid (Inclusive of taxes)</span>
+<span class="font-headline-sm text-headline-sm text-primary font-bold">₹150</span>
+</div>
+</div>
+</div>
+<!-- Operational Policy Note & Refund Assurance -->
+<div class="p-space-sm bg-surface-container-low rounded-lg border border-outline-variant/30 flex items-start gap-2.5">
+<span class="material-symbols-outlined text-[18px] text-tertiary-container shrink-0 mt-0.5">info</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">If the stall cannot accept in time, a full refund will be requested. We will update you when your payment provider confirms it.</p>
+</div>
+<!-- Secondary Action: Cancel Order & Request Refund -->
+<div class="pt-space-xs space-y-space-sm">
+<button class="w-full min-h-[48px] rounded-2xl border-[1.5px] border-primary text-primary font-label-lg text-label-lg font-bold bg-transparent hover:bg-surface-container active:scale-95 transition-all duration-150 flex items-center justify-center gap-2 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">cancel</span>
+        Cancel order &amp; request refund
+      </button>
+<!-- Support Link -->
+<div class="text-center pt-space-xs">
+<a class="inline-flex items-center gap-1 font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors py-1" href="#help">
+<span class="material-symbols-outlined text-[16px]">support_agent</span>
+          Need help with this order? Contact UniMall Support
+        </a>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Docked full-width bottom-0, Orders active) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-margin py-space-xs pb-safe bg-surface-container-lowest dark:bg-surface-container-low shadow-[0px_-2px_10px_rgba(22,61,50,0.06)] dark:shadow-none">
+<!-- Tab 1: Explore (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-space-md py-space-xs hover:text-primary dark:hover:text-primary-fixed transition-colors duration-150 active:scale-95" href="#explore">
+<span class="material-symbols-outlined text-[22px]">explore</span>
+<span class="font-label-sm text-label-sm mt-0.5">Explore</span>
+</a>
+<!-- Tab 2: Orders (Active - semantic match for order CB-1042 state) -->
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-primary-container text-on-secondary-container dark:text-on-primary-container rounded-full px-space-md py-space-xs font-semibold active:scale-95 transition-transform duration-150" href="#orders">
+<span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<span class="font-label-sm text-label-sm mt-0.5">Orders</span>
+</a>
+<!-- Tab 3: Account (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-space-md py-space-xs hover:text-primary dark:hover:text-primary-fixed transition-colors duration-150 active:scale-95" href="#account">
+<span class="material-symbols-outlined text-[22px]">person</span>
+<span class="font-label-sm text-label-sm mt-0.5">Account</span>
+</a>
+</nav>
+<!-- Inline Timer Interaction Script -->
+<script>
+    (function initTimer() {
+      let totalSeconds = 72; // 01:12
+      const display = document.getElementById('countdown-display');
+      if (!display) return;
+      
+      const interval = setInterval(() => {
+        if (totalSeconds <= 0) {
+          clearInterval(interval);
+          display.textContent = "00:00";
+          return;
+        }
+        totalSeconds--;
+        const mins = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+        const secs = String(totalSeconds % 60).padStart(2, '0');
+        display.textContent = `${mins}:${secs}`;
+      }, 1000);
+    })();
+  </script>
+</body></html>

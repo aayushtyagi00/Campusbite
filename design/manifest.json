@@ -1,0 +1,65 @@
+{
+  "project": "https://stitch.withgoogle.com/projects/17438086332439213223",
+  "screens": {
+    "recovery": {
+      "resource": "projects/17438086332439213223/screens/ae7cb5e566f045c9a579d18837684218",
+      "html": "recovery.html",
+      "preview": "recovery.png",
+      "title": "CampusBite - Password Recovery"
+    },
+    "vendor": {
+      "resource": "projects/17438086332439213223/screens/3945347a0c7a4b9d8d8270eeebea76a3",
+      "html": "vendor.html",
+      "preview": "vendor.png",
+      "title": "CampusBite - Vendor Live Order Board (Final Polish)"
+    },
+    "checkout": {
+      "resource": "projects/17438086332439213223/screens/1d22602bf4a54ca38462ec59ecdcceae",
+      "html": "checkout.html",
+      "preview": "checkout.png",
+      "title": "CampusBite - Cart & Scheduled Checkout (Polished)"
+    },
+    "orders": {
+      "resource": "projects/17438086332439213223/screens/25616fb0b94e4381beb4ad755c9100a1",
+      "html": "orders.html",
+      "preview": "orders.png",
+      "title": "CampusBite - Orders & Refund Status (Polished)"
+    },
+    "menu": {
+      "resource": "projects/17438086332439213223/screens/81a3cc0d53ff4d4b8fca7f08db3fd02e",
+      "html": "menu.html",
+      "preview": "menu.png",
+      "title": "CampusBite - The Rolling Kitchen Menu (Polished)"
+    },
+    "home": {
+      "resource": "projects/17438086332439213223/screens/02f3747ad99f421e80c8a383e823ef04",
+      "html": "home.html",
+      "preview": "home.png",
+      "title": "CampusBite - Student Home / Explore (Polished)"
+    },
+    "admin": {
+      "resource": "projects/17438086332439213223/screens/c12f305fba22479290ff206b4e7b60b5",
+      "html": "admin.html",
+      "preview": "admin.png",
+      "title": "CampusBite - Admin Operations Overview (Polished)"
+    },
+    "pickup": {
+      "resource": "projects/17438086332439213223/screens/79f1361283674bdeb6f478ab0a507473",
+      "html": "pickup.html",
+      "preview": "pickup.png",
+      "title": "CampusBite - Active Order Ready for Pickup (Polished)"
+    },
+    "sign-in": {
+      "resource": "projects/17438086332439213223/screens/0cc64ec3bae144dc93f3a4451f2919e7",
+      "html": "sign-in.html",
+      "preview": "sign-in.png",
+      "title": "CampusBite - Sign In & Checkout Continuation"
+    },
+    "acceptance": {
+      "resource": "projects/17438086332439213223/screens/23cff5e11efe42cab6ea0ace0c76f723",
+      "html": "acceptance.html",
+      "preview": "acceptance.png",
+      "title": "CampusBite - Payment Verified & Awaiting Acceptance (Polished)"
+    }
+  }
+}

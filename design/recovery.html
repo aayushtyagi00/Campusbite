@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CampusBite - Password Recovery &amp; Code Verification</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container": "#efeee8",
+            "on-error-container": "#93000a",
+            "on-primary-container": "#94ccb3",
+            "error": "#ba1a1a",
+            "primary": "#01402e",
+            "surface-variant": "#e3e3dd",
+            "on-surface": "#1b1c19",
+            "surface": "#faf9f3",
+            "secondary-container": "#c2ecdb",
+            "tertiary": "#6d1800",
+            "background": "#faf9f3",
+            "tertiary-fixed": "#ffdbd1",
+            "inverse-on-surface": "#f2f1eb",
+            "on-primary": "#ffffff",
+            "outline-variant": "#c0c9c2",
+            "primary-fixed": "#b6efd4",
+            "on-tertiary-container": "#ffac95",
+            "tertiary-fixed-dim": "#ffb5a0",
+            "on-error": "#ffffff",
+            "surface-container-low": "#f5f4ee",
+            "on-tertiary": "#ffffff",
+            "on-secondary-fixed": "#002018",
+            "on-tertiary-fixed-variant": "#872000",
+            "secondary-fixed-dim": "#a6cfc0",
+            "inverse-surface": "#30312d",
+            "surface-container-highest": "#e3e3dd",
+            "surface-container-lowest": "#ffffff",
+            "secondary-fixed": "#c2ecdb",
+            "on-background": "#1b1c19",
+            "on-surface-variant": "#404944",
+            "on-tertiary-fixed": "#3b0900",
+            "surface-bright": "#faf9f3",
+            "on-secondary": "#ffffff",
+            "on-primary-fixed": "#002116",
+            "on-primary-fixed-variant": "#17503c",
+            "on-secondary-fixed-variant": "#284e42",
+            "surface-dim": "#dbdad4",
+            "surface-tint": "#326853",
+            "on-secondary-container": "#466c5f",
+            "outline": "#707974",
+            "tertiary-container": "#952500",
+            "primary-container": "#215844",
+            "secondary": "#406659",
+            "inverse-primary": "#9ad2b9",
+            "primary-fixed-dim": "#9ad2b9",
+            "error-container": "#ffdad6",
+            "surface-container-high": "#e9e8e2"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "gutter-desktop": "1.5rem",
+            "space-xs": "0.25rem",
+            "space-sm": "0.5rem",
+            "margin-tablet": "1.5rem",
+            "space-md": "1rem",
+            "gutter": "1rem",
+            "margin-desktop": "2.5rem",
+            "space-lg": "1.5rem",
+            "space-xl": "2.25rem",
+            "margin": "1rem"
+          },
+          "fontFamily": {
+            "body-lg": ["DM Sans"],
+            "headline-md": ["DM Sans"],
+            "label-md": ["DM Sans"],
+            "body-md": ["DM Sans"],
+            "headline-sm": ["DM Sans"],
+            "headline-lg-mobile": ["DM Sans"],
+            "label-lg": ["DM Sans"],
+            "body-sm": ["DM Sans"],
+            "headline-lg": ["DM Sans"],
+            "label-sm": ["DM Sans"],
+            "headline-xl": ["DM Sans"],
+            "headline-xl-mobile": ["DM Sans"]
+          },
+          "fontSize": {
+            "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "600" }],
+            "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "headline-lg-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+            "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+            "headline-xl-mobile": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface antialiased min-h-screen flex flex-col justify-between selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- Header: Linear flow task header with back navigation and subtle UniMall brand badge -->
+<header class="sticky top-0 z-40 bg-surface/90 backdrop-blur-md px-margin py-space-sm flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-space-sm">
+<a aria-label="Back to sign in" class="w-10 h-10 rounded-full flex items-center justify-center text-primary hover:bg-surface-container active:scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="arrow_back">arrow_back</span>
+</a>
+<span class="font-headline-sm text-headline-sm font-bold text-primary tracking-tight">CampusBite</span>
+</div>
+<div class="flex items-center gap-space-xs px-space-sm py-1 bg-surface-container-high rounded-full">
+<span class="material-symbols-outlined text-[14px] text-primary" data-icon="storefront">storefront</span>
+<span class="font-label-sm text-label-sm text-primary font-semibold">UniMall</span>
+</div>
+</header>
+<!-- Main Focused Canvas -->
+<main class="flex-1 w-full max-w-md mx-auto px-margin pt-space-md pb-space-xl flex flex-col justify-start">
+<!-- Hero / Verification Status Header -->
+<div class="text-center mt-space-sm mb-space-lg">
+<div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-secondary-container/60 text-primary-container mb-space-sm shadow-[0px_2px_6px_rgba(22,61,50,0.04)]">
+<span class="material-symbols-outlined text-[28px]" data-icon="mark_email_read" style="font-variation-settings: 'FILL' 1;">mark_email_read</span>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-tight mb-space-xs">
+        Check your inbox
+      </h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-xs mx-auto leading-relaxed">
+        If an account exists for this email, we have sent password-reset instructions.
+      </p>
+</div>
+<!-- Verification Paths Container -->
+<div class="flex flex-col gap-space-md">
+<!-- Path 1: Direct link explanation -->
+<section class="bg-surface-container-lowest rounded-xl p-space-md border border-outline-variant/40 shadow-[0px_2px_6px_rgba(22,61,50,0.04)]">
+<div class="flex items-start gap-space-sm">
+<div class="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center flex-shrink-0 text-primary mt-0.5">
+<span class="material-symbols-outlined text-[16px]" data-icon="link">link</span>
+</div>
+<div class="flex-1">
+<h2 class="font-label-lg text-label-lg text-primary mb-1">
+              1. Click the secure reset link sent to your email
+            </h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+              Tapping the button inside the message will immediately open the secure password change screen on your device.
+            </p>
+</div>
+</div>
+</section>
+<!-- Path 2: Enter 6-digit recovery code input -->
+<section class="bg-surface-container-lowest rounded-xl p-space-md border border-outline-variant/40 shadow-[0px_2px_6px_rgba(22,61,50,0.04)]">
+<div class="flex items-center gap-space-sm mb-space-sm">
+<div class="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center flex-shrink-0 text-primary">
+<span class="material-symbols-outlined text-[16px]" data-icon="dialpad">dialpad</span>
+</div>
+<h2 class="font-label-lg text-label-lg text-primary">
+            2. Or enter the 6-digit recovery code
+          </h2>
+</div>
+<!-- 6 Numeric OTP Input Boxes -->
+<div class="flex justify-between items-center gap-1.5 sm:gap-2 my-space-md">
+<input autofocus="" class="otp-field w-11 h-12 text-center text-headline-sm font-headline-sm text-primary font-bold bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary-container focus:ring-0 transition-colors" inputmode="numeric" maxlength="1" pattern="[0-9]*" placeholder="•" type="text"/>
+<input class="otp-field w-11 h-12 text-center text-headline-sm font-headline-sm text-primary font-bold bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary-container focus:ring-0 transition-colors" inputmode="numeric" maxlength="1" pattern="[0-9]*" placeholder="•" type="text"/>
+<input class="otp-field w-11 h-12 text-center text-headline-sm font-headline-sm text-primary font-bold bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary-container focus:ring-0 transition-colors" inputmode="numeric" maxlength="1" pattern="[0-9]*" placeholder="•" type="text"/>
+<input class="otp-field w-11 h-12 text-center text-headline-sm font-headline-sm text-primary font-bold bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary-container focus:ring-0 transition-colors" inputmode="numeric" maxlength="1" pattern="[0-9]*" placeholder="•" type="text"/>
+<input class="otp-field w-11 h-12 text-center text-headline-sm font-headline-sm text-primary font-bold bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary-container focus:ring-0 transition-colors" inputmode="numeric" maxlength="1" pattern="[0-9]*" placeholder="•" type="text"/>
+<input class="otp-field w-11 h-12 text-center text-headline-sm font-headline-sm text-primary font-bold bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary-container focus:ring-0 transition-colors" inputmode="numeric" maxlength="1" pattern="[0-9]*" placeholder="•" type="text"/>
+</div>
+<!-- Campus Operational Clarity Subtext -->
+<div class="flex items-center gap-space-xs p-space-xs bg-surface-container-low rounded-lg mb-space-md text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-tertiary flex-shrink-0" data-icon="info">info</span>
+<p class="font-body-sm text-body-sm leading-tight">
+            This password recovery code is separate from order pickup codes.
+          </p>
+</div>
+<!-- Primary Action Button -->
+<button class="w-full h-12 bg-primary-container hover:bg-primary text-on-primary font-label-lg text-label-lg rounded-xl flex items-center justify-center gap-space-xs shadow-sm active:scale-95 transition-transform duration-150" type="button">
+<span>Verify Code</span>
+<span class="material-symbols-outlined text-[18px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<!-- Countdown / Resend Block -->
+<div class="mt-space-md text-center">
+<div class="inline-flex items-center gap-1.5 text-on-surface-variant font-body-sm text-body-sm" id="countdown-wrapper">
+<span class="material-symbols-outlined text-[16px] text-tertiary" data-icon="timer">timer</span>
+<span id="countdown-label">Resend code in <strong class="text-tertiary font-semibold" id="timer">00:45</strong></span>
+</div>
+<button class="hidden text-primary hover:text-primary-container font-label-md text-label-md underline underline-offset-4 active:scale-95 transition-transform" id="resend-btn">
+            Resend recovery code
+          </button>
+</div>
+</section>
+</div>
+<!-- Alternative Options at Bottom -->
+<div class="mt-space-lg flex flex-col items-center gap-space-sm pt-space-xs">
+<a class="font-label-md text-label-md text-primary hover:text-primary-container flex items-center gap-1 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined text-[16px]" data-icon="alternate_email">alternate_email</span>
+<span>Change email address</span>
+</a>
+<div class="relative w-full flex items-center justify-center my-space-xs">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-outline-variant/30"></div>
+</div>
+<span class="relative px-space-sm bg-background text-on-surface-variant font-label-sm text-label-sm">or</span>
+</div>
+<button class="w-full h-11 bg-surface-container-lowest border border-outline-variant/60 hover:bg-surface-container text-on-surface font-label-md text-label-md rounded-xl flex items-center justify-center gap-space-sm active:scale-95 transition-all duration-150" type="button">
+<svg class="w-4 h-4" viewbox="0 0 24 24">
+<path d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.15z" fill="#4285F4"></path>
+<path d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.24v3.15C3.26 21.36 7.33 24 12 24z" fill="#34A853"></path>
+<path d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.24C.45 8.15 0 9.99 0 12s.45 3.85 1.24 5.42l4.04-3.15z" fill="#FBBC05"></path>
+<path d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.24 6.58l4.04 3.15c.95-2.83 3.6-4.98 6.72-4.98z" fill="#EA4335"></path>
+</svg>
+<span>Sign in with Google</span>
+</button>
+</div>
+</main>
+<!-- Interactive script for OTP progression & countdown -->
+<script>
+    // Handle 6-digit OTP cursor auto-advancement
+    const otpInputs = document.querySelectorAll('.otp-field');
+    otpInputs.forEach((input, index) => {
+      input.addEventListener('input', (e) => {
+        const val = e.target.value.replace(/[^0-9]/g, '');
+        e.target.value = val;
+        if (val.length === 1 && index < otpInputs.length - 1) {
+          otpInputs[index + 1].focus();
+        }
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !e.target.value && index > 0) {
+          otpInputs[index - 1].focus();
+        }
+      });
+
+      input.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pasteData = (e.clipboardData || window.clipboardData).getData('text').trim().replace(/[^0-9]/g, '');
+        if (pasteData) {
+          for (let i = 0; i < otpInputs.length; i++) {
+            if (i < pasteData.length) {
+              otpInputs[i].value = pasteData[i];
+            }
+          }
+          const focusIndex = Math.min(pasteData.length, otpInputs.length - 1);
+          otpInputs[focusIndex].focus();
+        }
+      });
+    });
+
+    // Countdown Timer logic
+    let remainingSeconds = 45;
+    const timerEl = document.getElementById('timer');
+    const countdownWrapper = document.getElementById('countdown-wrapper');
+    const resendBtn = document.getElementById('resend-btn');
+
+    const interval = setInterval(() => {
+      remainingSeconds--;
+      if (remainingSeconds >= 0) {
+        const secs = remainingSeconds < 10 ? '0' + remainingSeconds : remainingSeconds;
+        timerEl.textContent = `00:${secs}`;
+      } else {
+        clearInterval(interval);
+        countdownWrapper.classList.add('hidden');
+        resendBtn.classList.remove('hidden');
+      }
+    }, 1000);
+
+    resendBtn.addEventListener('click', () => {
+      remainingSeconds = 45;
+      timerEl.textContent = '00:45';
+      resendBtn.classList.add('hidden');
+      countdownWrapper.classList.remove('hidden');
+    });
+  </script>
+</body></html>
