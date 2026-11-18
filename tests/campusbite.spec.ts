@@ -20,6 +20,7 @@ async function openCheckout(page: Page) {
 async function verifyPayment(page: Page) {
   await page.getByRole("button", { name: /Simulate payment/ }).click();
   await expect(page.getByRole("heading", { name: "Awaiting acceptance" })).toBeVisible();
+  await expect(page).toHaveURL(/\/orders$/);
 }
 
 test("the public vendor page offers applications while staff routes require sign-in", async ({ page }) => {
@@ -62,6 +63,45 @@ test("a student can cancel a pending sample order without gaining staff access",
   await expect(page.getByText("Refund · Requested", { exact: false })).toBeVisible();
   await page.goto("/admin/access");
   await expect(page).toHaveURL(/\/admin\/sign-in$/);
+});
+
+test("order details stay at /orders and a separate preview session cannot read them", async ({ page, browser }) => {
+  await openCheckout(page);
+  await verifyPayment(page);
+  const reference = await page.locator(".page-heading .eyebrow").innerText();
+  await page.getByRole("button", { name: "Your orders", exact: true }).click();
+  await page.getByRole("button", { name: new RegExp(reference) }).click();
+  await expect(page.getByRole("heading", { name: "Order details" })).toBeVisible();
+  await expect(page).toHaveURL(/\/orders$/);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Order details" })).toBeVisible();
+  await page.getByLabel("What happened?").fill("A private note for this sample order.");
+  await page.getByRole("button", { name: "Submit sample support request" }).click();
+  await expect(page.getByText("A private note for this sample order.")).toBeVisible();
+
+  const other = await browser.newContext();
+  try {
+    const visitor = await other.newPage();
+    const guest = await visitor.goto("/orders");
+    expect(guest?.headers()["cache-control"]).toContain("no-store");
+    await expect(visitor.getByText("Sign in to see your orders")).toBeVisible();
+    await visitor.goto("/sign-in");
+    await visitor.getByRole("button", { name: "Use sample student" }).click();
+    await expect(visitor.getByRole("heading", { name: "Your account" })).toBeVisible();
+    for (const url of [`/orders/${reference}`, `/orders?id=${reference}`]) {
+      await visitor.goto(url);
+      await expect(visitor).toHaveURL(/\/orders$/);
+      await expect(visitor.getByText("No orders yet")).toBeVisible();
+      await expect(visitor.getByText(reference, { exact: false })).toHaveCount(0);
+    }
+  } finally {
+    await other.close();
+  }
+  await page.goto("/account");
+  await page.getByRole("button", { name: "Sign out of preview" }).click();
+  await expect(page.getByRole("heading", { name: "Guest" })).toBeVisible();
+  await page.goto("/orders");
+  await expect(page.getByText("Sign in to see your orders")).toBeVisible();
 });
 
 test("the bag requires confirmation for a different stall and a changed price", async ({ page }) => {

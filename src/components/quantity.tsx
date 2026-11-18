@@ -16,7 +16,7 @@ export function Quantity({ product }: { product: Product }) {
   const unavailable = product.soldOut || product.archived || data.orderingPaused || !stall || !isOrderable(stall);
 
   function change(qty: number, replace = false) {
-    const result = setQuantity(product, qty, replace);
+    const result = setQuantity(product, qty, replace, data);
     if (result === "different-stall") {
       dialog.current?.showModal();
       return;

@@ -82,7 +82,10 @@ export function basketPrepMinutes(lines: { prep: number; qty: number }[]) {
   return Math.max(4, ...lines.map(line => line.prep)) + Math.max(0, lines.reduce((sum, line) => sum + line.qty, 0) - 1) * 2;
 }
 
-export function pickupSlots(stall: Stall, lines: { prep: number; qty: number }[], orders: Order[], now: number): PickupSlot[] {
+export function pickupSlots(
+  stall: Stall, lines: { prep: number; qty: number }[],
+  orders: (Pick<Order, "stall" | "slot" | "deadline"> & { status: Order["status"] | "unpaid" })[], now: number, deadlineNow = now,
+): PickupSlot[] {
   if (!isOrderable(stall)) return [];
   const minute = 60_000;
   const interval = 10 * minute;
@@ -94,7 +97,7 @@ export function pickupSlots(stall: Stall, lines: { prep: number; qty: number }[]
   const slots: PickupSlot[] = [];
   for (let start = Math.ceil(Math.max(open, earliest) / interval) * interval; start <= now + 60 * minute && start + interval <= close; start += interval) {
     const committed = orders.filter(order => order.stall === stall.id && order.slot.start === start &&
-      !["cancelled", "expired", "rejected"].includes(order.status) && !(order.status === "awaiting" && order.deadline <= now)).length;
+      !["cancelled", "expired", "rejected"].includes(order.status) && !(order.status === "awaiting" && order.deadline <= deadlineNow)).length;
     if (committed < stall.capacity) slots.push({ start, end: start + interval });
   }
   return slots;
