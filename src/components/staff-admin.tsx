@@ -7,7 +7,8 @@ import { Empty, Status } from "./ui";
 
 export function AdminOverview({ shops, applications }: { shops: number; applications: number }) {
   return <>
-    <div className="ops-heading"><div><h1>CampusBite Admin</h1><p>Review vendor applications and control access to campus shops.</p></div></div>
+    <div className="ops-heading"><div><h1>CampusBite Admin</h1><p>Review vendor applications and control access to campus shops.</p></div>
+      <Link className="button" href="/admin/access">Manage vendor access</Link></div>
     <div className="metrics">
       <Link className="panel panel-pad metric" href="/admin/access"><p>Vendor shops</p><strong>{shops}</strong><ArrowRight className="metric-arrow" size={17} /></Link>
       <Link className="panel panel-pad metric" href="/admin/applications"><p>Applications awaiting review</p><strong>{applications}</strong><ArrowRight className="metric-arrow" size={17} /></Link>
@@ -15,7 +16,9 @@ export function AdminOverview({ shops, applications }: { shops: number; applicat
   </>;
 }
 
-export function AccessManagement({ shops, grants }: { shops: VendorShop[]; grants: VendorAccess[] }) {
+export function AccessManagement({ shops, selected, page, grants, shopPages }: {
+  shops: VendorShop[]; selected?: VendorShop; page: number; grants: VendorAccess[]; shopPages: React.ReactNode;
+}) {
   return <>
     <div className="ops-heading"><div><h1>Access Management</h1><p>Grant an email access to one shop at a time. Select the shop and assign the role.</p></div></div>
     <div className="access-grid">
@@ -26,13 +29,16 @@ export function AccessManagement({ shops, grants }: { shops: VendorShop[]; grant
         </StaffForm>
       </section>
       <section className="panel panel-pad stack">
-        <h2>Assign shop access</h2>
-        {shops.length ? <StaffForm action={saveVendorAccess} label="Save access">
+        <h2>Select a shop</h2>
+        {shops.map(shop => <Link key={shop.id} href={`/admin/access?page=${page}&shop=${shop.id}`}
+          aria-current={shop.id === selected?.id ? "true" : undefined}>{shop.name}</Link>)}
+        {shopPages}
+      </section>
+      <section className="panel panel-pad stack">
+        <h2>{selected ? `Grant access to ${selected.name}` : "Grant vendor access"}</h2>
+        {selected ? <StaffForm key={selected.id} action={saveVendorAccess} label="Save access">
+          <input type="hidden" name="shop_id" value={selected.id} />
           <div className="form-grid">
-            <label className="field">Vendor shop<select name="shop_id" defaultValue="" required>
-              <option value="" disabled>Select a shop</option>
-              {shops.map(shop => <option key={shop.id} value={shop.id}>{shop.name}</option>)}
-            </select></label>
             <label className="field">Approved email<input name="email" type="email" placeholder="name@example.com" maxLength={254} required /></label>
             <label className="field">Role<select name="role" defaultValue="staff">
               {Object.entries(vendorRoles).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
@@ -43,20 +49,15 @@ export function AccessManagement({ shops, grants }: { shops: VendorShop[]; grant
       </section>
     </div>
     <section className="stack staff-records" aria-label="Shop access list">
-      <h2>Access by shop</h2>
-      {!shops.length && <Empty title="No vendor shops yet" />}
-      {shops.map(shop => {
-        const assigned = grants.filter(grant => grant.shop_id === shop.id);
-        return <article className="panel panel-pad stack" key={shop.id}>
-          <h3>{shop.name}</h3>
-          {assigned.length ? <ul className="stack">{assigned.map(grant => <li className="access-row" key={grant.email}>
+      {selected && <article className="panel panel-pad stack" key={selected.id}>
+          <h2>People with access to {selected.name}</h2>
+          {grants.length ? <ul className="stack">{grants.map(grant => <li className="access-row" key={grant.email}>
             <span>{grant.email}</span><Status tone="good">{vendorRoles[grant.role]}</Status>
             <StaffForm action={revokeVendorAccess} label="Revoke access" secondary>
-              <input type="hidden" name="shop_id" value={shop.id} /><input type="hidden" name="email" value={grant.email} />
+              <input type="hidden" name="shop_id" value={selected.id} /><input type="hidden" name="email" value={grant.email} />
             </StaffForm>
-          </li>)}</ul> : <p>No emails have access to this shop.</p>}
-        </article>;
-      })}
+          </li>)}</ul> : <p>No grants on this page.</p>}
+        </article>}
     </section>
   </>;
 }

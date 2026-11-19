@@ -63,7 +63,10 @@ export function staffService() {
 
 export async function staffSession(writeCookies = false) {
   const client = await staffClient(writeCookies);
-  if (!client) return null;
+  return client ? verifiedStaffSession(client) : null;
+}
+
+export async function verifiedStaffSession(client: NonNullable<Awaited<ReturnType<typeof staffClient>>>) {
   const { data, error } = await client.auth.getUser();
   if (error || !data.user?.email || !data.user.email_confirmed_at) return null;
   return { client, email: data.user.email.toLowerCase() };

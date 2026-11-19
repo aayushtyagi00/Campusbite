@@ -1,7 +1,8 @@
 import "server-only";
 
+import { cookies } from "next/headers";
 import { createHmac } from "node:crypto";
-import { staffService, staffSession } from "./supabase";
+import { isStaffCookie, staffClient, staffService, staffSession, verifiedStaffSession } from "./supabase";
 import type { StaffArea } from "./database";
 import type { User } from "@supabase/supabase-js";
 
@@ -14,9 +15,12 @@ export function staffDashboard(area: StaffArea) {
 }
 
 export async function adminSession(writeCookies = false) {
-  const session = await staffSession(writeCookies);
-  if (!session) return null;
-  const { data, error } = await session.client.rpc("campusbite_is_admin");
+  if (!(await cookies()).getAll().some(({ name }) => isStaffCookie(name))) return null;
+  const client = await staffClient(writeCookies);
+  if (!client) return null;
+  const [session, { data, error }] = await Promise.all([
+    verifiedStaffSession(client), client.rpc("campusbite_is_admin"),
+  ]);
   return !error && data === true ? session : null;
 }
 

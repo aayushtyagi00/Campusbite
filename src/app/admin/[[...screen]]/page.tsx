@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { OpsShell } from "@/components/ops-shell";
 import { AccessManagement, AdminOverview, VendorApplications } from "@/components/staff-admin";
@@ -8,9 +9,25 @@ import { liveCommerce } from "@/lib/student-auth";
 import { StorefrontSettings } from "@/components/storefront-settings";
 import { RecentCommerceOrders } from "@/components/recent-commerce-orders";
 
+const pageSize = 25;
+
+function pageNumber(value: string | string[] | undefined) {
+  const n = Number(value);
+  return Number.isSafeInteger(n) && n > 0 && n < 10000000 ? n : 1;
+}
+
+function PageLinks({ page, more, href, label }: { page: number; more: boolean; href: string; label: string }) {
+  if (page === 1 && !more) return null;
+  return <nav className="row" aria-label={label}>
+    {page > 1 && <Link href={href + (page - 1)}>Previous</Link>}
+    <span>Page {page}</span>
+    {more && <Link href={href + (page + 1)}>Next</Link>}
+  </nav>;
+}
+
 export default async function Page({ params, searchParams }: {
   params: Promise<{ screen?: string[] }>;
-  searchParams: Promise<{ error?: string | string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { screen = [] } = await params;
   const session = await adminSession();
@@ -39,20 +56,35 @@ export default async function Page({ params, searchParams }: {
     </OpsShell>;
   }
   if (section === "access") {
-    const [shops, grants] = await Promise.all([
-      client.from("vendor_shops").select("id,name,created_at").order("name"),
-      client.from("vendor_access").select("shop_id,email,role,created_at").order("email"),
-    ]);
+    const query = await searchParams;
+    const page = pageNumber(query.page);
+    const offset = (page - 1) * pageSize;
+    const shops = await client.from("vendor_shops").select("id,name,created_at")
+      .order("name").order("id").range(offset, offset + pageSize);
+    const visible = shops.data?.slice(0, pageSize) ?? [];
+    const selected = visible.find(shop => shop.id === query.shop) ?? visible[0];
+    const members = pageNumber(query.members);
+    const start = (members - 1) * pageSize;
+    const grants = selected ? await client.from("vendor_access").select("shop_id,email,role,created_at")
+      .eq("shop_id", selected.id).order("email").range(start, start + pageSize) : null;
     return <OpsShell area="admin" path="/admin/access" email={email}>
-      {shops.error || grants.error ? <Notice>Access records are temporarily unavailable.</Notice> :
-        <AccessManagement shops={shops.data} grants={grants.data} />}
+      {shops.error || grants?.error ? <Notice>Access records are temporarily unavailable.</Notice> : <>
+        <AccessManagement shops={visible} selected={selected} page={page} grants={grants?.data?.slice(0, pageSize) ?? []}
+          shopPages={<PageLinks page={page} more={(shops.data?.length ?? 0) > pageSize} href="/admin/access?page=" label="Shop pages" />} />
+        {selected && <PageLinks page={members} more={(grants?.data?.length ?? 0) > pageSize}
+          href={`/admin/access?page=${page}&shop=${selected.id}&members=`} label="Member pages" />}
+      </>}
     </OpsShell>;
   }
   if (section === "applications") {
-    const applications = await client.from("vendor_applications").select("*").order("created_at", { ascending: false });
+    const page = pageNumber((await searchParams).page);
+    const start = (page - 1) * pageSize;
+    const applications = await client.from("vendor_applications").select("*")
+      .order("created_at", { ascending: false }).order("id").range(start, start + pageSize);
     return <OpsShell area="admin" path="/admin/applications" email={email}>
       {applications.error ? <Notice>Vendor applications are temporarily unavailable.</Notice> :
-        <VendorApplications applications={applications.data} />}
+        <><VendorApplications applications={applications.data.slice(0, pageSize)} />
+          <PageLinks page={page} more={applications.data.length > pageSize} href="/admin/applications?page=" label="Application pages" /></>}
     </OpsShell>;
   }
   if (section !== undefined) notFound();

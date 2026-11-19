@@ -165,7 +165,7 @@ export async function saveVendorAccess(_previous: FormState, form: FormData): Pr
   });
   if (error) return failure("Access could not be saved. Check that the selected shop still exists.");
   revalidatePath("/admin/access");
-  return { message: "Vendor access saved." };
+  return { message: `Access saved. Ask ${email} to sign in at /vendor/sign-in with this email.` };
 }
 
 export async function revokeVendorAccess(_previous: FormState, form: FormData): Promise<FormState> {
