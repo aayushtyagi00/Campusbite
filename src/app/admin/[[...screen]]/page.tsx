@@ -7,7 +7,7 @@ import { StaffSignIn } from "@/components/staff-entry";
 import { Notice } from "@/components/ui";
 import { adminSession } from "@/lib/staff/access";
 import { liveCommerce } from "@/lib/student-auth";
-import { StorefrontSettings } from "@/components/storefront-settings";
+import { CurrentVendors, VendorRecord, ApplicationReview } from "@/components/current-vendors";
 import { RecentCommerceOrders } from "@/components/recent-commerce-orders";
 
 const pageSize = 25;
@@ -37,22 +37,23 @@ export default async function Page({ params, searchParams }: {
     return <StaffSignIn area="admin" googleError={(await searchParams).error === "google"} />;
   }
   if (!session) redirect("/admin/sign-in");
-  if (screen.length > 1) notFound();
+  if (screen.length > 2 || (screen.length === 2 && !["vendors","applications"].includes(screen[0]))) notFound();
   const section = screen[0];
-  if (section === "vendors") redirect("/admin/applications");
+
   if (["overview", "refunds", "finance", "settings"].includes(section)) redirect("/admin");
   const { client, email } = session;
 
+  if (section === "vendors" || (section === "applications" && screen[1])) {
+    return <OpsShell area="admin" path={"/admin/"+section} email={email}>
+      {section === "applications" ? <ApplicationReview client={client} id={screen[1]} /> :
+        screen[1] ? <VendorRecord client={client} id={screen[1]} /> : <CurrentVendors client={client} page={pageNumber((await searchParams).page)} />}
+    </OpsShell>;
+  }
   if (section === "orders") {
     if (!liveCommerce()) redirect("/admin");
-    const [shops, storefronts] = await Promise.all([
-      client.from("vendor_shops").select("id,name,created_at").order("name"),
-      client.from("commerce_stalls").select("slug,shop_id,capacity,enabled"),
-    ]);
     return <OpsShell area="admin" path="/admin/orders" email={email}>
       <h1>Commerce operations</h1>
-      {shops.error || storefronts.error ? <Notice>Storefront settings are temporarily unavailable.</Notice> :
-        <StorefrontSettings shops={shops.data} storefronts={storefronts.data} />}
+      <Link className="text-link" href="/admin/vendors">Manage storefronts and pickup capacity</Link>
       <RecentCommerceOrders />
     </OpsShell>;
   }
@@ -85,7 +86,7 @@ export default async function Page({ params, searchParams }: {
   if (section === "applications") {
     const page = pageNumber((await searchParams).page);
     const start = (page - 1) * pageSize;
-    const applications = await client.from("vendor_applications").select("*")
+    const applications = await client.from("vendor_applications").select("*").neq("status","draft")
       .order("created_at", { ascending: false }).order("id").range(start, start + pageSize);
     return <OpsShell area="admin" path="/admin/applications" email={email}>
       {applications.error ? <Notice>Vendor applications are temporarily unavailable.</Notice> :

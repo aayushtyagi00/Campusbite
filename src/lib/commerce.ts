@@ -2,7 +2,7 @@ import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
-import { stalls, type Fulfillment } from "./campus";
+import type { FoodCourtId, Fulfillment, Stall } from "./campus";
 import type { StudentOrderHistory } from "./student-order-types";
 import { studentIdentity } from "./student-auth";
 import type { CommerceMenuRow } from "./staff/database";
@@ -23,22 +23,25 @@ export function catalogProduct({ stall_slug, sold_out, ...item }: CommerceMenuRo
 const activeStorefronts = unstable_cache(async (_project: string) => {
   const db = commerceDb();
   const [storefronts, menu] = await Promise.all([
-    db.from("commerce_stalls").select("slug,capacity").eq("enabled", true),
+    db.from("commerce_stalls").select("slug,display_name,location,cuisine,court,photo,opens,closes,capacity,enabled")
+      .eq("published", true).eq("standing", "approved").order("display_name"),
     db.from("commerce_menu").select("id,stall_slug,name,category,description,price,prep,diet,photo,sold_out").order("name"),
   ]);
   if (storefronts.error || menu.error) throw new Error("Catalog is unavailable");
-  return { enabled: storefronts.data, products: (menu.data as CommerceMenuRow[]).map(catalogProduct) };
+  const stalls: Stall[] = storefronts.data.map(row => ({
+    id: row.slug, name: row.display_name, location: row.location, cuisine: row.cuisine, photo: row.photo,
+    opening: row.opens?.slice(0, 5) ?? "", closing: row.closes?.slice(0, 5) ?? "",
+    foodCourt: row.court as FoodCourtId, capacity: row.capacity, paused: !row.enabled, approval: "Approved",
+  }));
+  const published = new Set(stalls.map(stall => stall.id));
+  return { stalls, products: (menu.data as CommerceMenuRow[]).filter(item => published.has(item.stall_slug)).map(catalogProduct) };
 }, ["campusbite-storefronts"], { tags: ["campusbite-storefronts"], revalidate: 30 });
 
 export async function liveStorefronts() {
   try {
-    const { enabled, products } = await activeStorefronts(process.env.SUPABASE_URL ?? "");
-    return { products, stalls: stalls.map(stall => {
-      const config = enabled.find(item => item.slug === stall.id);
-      return { ...stall, paused: !config, capacity: config?.capacity ?? stall.capacity };
-    }) };
+    return await activeStorefronts(process.env.SUPABASE_URL ?? "");
   } catch {
-    return { products: [], stalls: stalls.map(stall => ({ ...stall, paused: true })) };
+    return { products: [], stalls: [] };
   }
 }
 

@@ -1,4 +1,4 @@
-import { ClipboardList, Gauge, LayoutGrid, ShieldCheck } from "lucide-react";
+import { ClipboardList, Gauge, LayoutGrid, ShieldCheck, Store } from "lucide-react";
 import Link from "next/link";
 import { NavigationHint } from "./navigation-hint";
 import { staffSignOut } from "@/lib/staff/actions";
@@ -11,7 +11,7 @@ const links = {
   ],
   admin: [
     ["/admin", "Overview", Gauge], ["/admin/applications", "Vendor applications", ClipboardList],
-    ["/admin/access", "Access Management", ShieldCheck],
+    ["/admin/vendors", "Current Vendors", Store], ["/admin/access", "Access Management", ShieldCheck],
   ],
 } as const;
 

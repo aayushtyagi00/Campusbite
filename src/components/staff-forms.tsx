@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, type ReactNode } from "react";
-import { requestStaffPasswordCode, saveStaffPassword, signInWithStaffPassword, startStaffGoogle, submitVendorApplication } from "@/lib/staff/actions";
+import { requestStaffPasswordCode, saveStaffPassword, signInWithStaffPassword, startStaffGoogle } from "@/lib/staff/actions";
 import type { StaffArea } from "@/lib/staff/database";
 import { Notice } from "./ui";
 
@@ -59,19 +59,4 @@ function StaffPasswordSetup({ area, disabled }: { area: StaffArea; disabled: boo
     </form>}
     {completed && <p role="status">{saved.message}</p>}
   </div>;
-}
-
-export function VendorApplicationForm({ disabled }: { disabled: boolean }) {
-  return <StaffForm action={submitVendorApplication} label="Submit application" disabled={disabled}>
-    <div className="sr-only" aria-hidden="true"><label>Company website<input name="company_website" tabIndex={-1} autoComplete="off" /></label></div>
-    <div className="form-grid">
-      <label className="field">Shop name<input name="shop_name" required minLength={2} maxLength={100} /></label>
-      <label className="field">Contact name<input name="contact_name" autoComplete="name" required minLength={2} maxLength={100} /></label>
-      <label className="field">Contact email<input name="email" type="email" autoComplete="email" required maxLength={254} /></label>
-      <label className="field">Phone number<input name="phone" type="tel" autoComplete="tel" required maxLength={24} /></label>
-    </div>
-    <label className="field">Food court and stall location<input name="location" required minLength={2} maxLength={150} /></label>
-    <label className="field">Tell us about your shop<textarea name="description" maxLength={1200} rows={4} /></label>
-    <p className="fineprint">CampusBite administrators use these details to review your application.</p>
-  </StaffForm>;
 }

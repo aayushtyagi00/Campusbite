@@ -9,9 +9,21 @@ export type StaffArea = "admin" | "vendor";
 
 export type VendorShop = { id: string; name: string; created_at: string };
 export type VendorAccess = { shop_id: string; email: string; role: VendorRole; created_at: string };
+export const applicationStatuses = { draft: "Draft", submitted: "Submitted", under_review: "Under review", changes_requested: "Changes requested", approved: "Approved", rejected: "Rejected", suspended: "Suspended" } as const;
+export type ApplicationStatus = keyof typeof applicationStatuses;
+export type ApplicationDocument = { path: string; name: string };
 export type VendorApplication = {
   id: string; shop_name: string; contact_name: string; email: string; phone: string;
-  location: string; description: string; status: "submitted" | "reviewed"; created_at: string;
+  location: string; description: string; status: ApplicationStatus; created_at: string;
+  court: string; cuisine: string; opens: string | null; closes: string | null; registration: string;
+  documents: ApplicationDocument[]; agreement_version: string | null; agreed_at: string | null;
+  verified_at: string | null; applicant_id: string | null; review_note: string; shop_id: string | null; revision: number;
+};
+export type Storefront = {
+  slug: string; shop_id: string | null; display_name: string; court: string; location: string; cuisine: string;
+  photo: string; opens: string | null; closes: string | null; capacity: number; published: boolean; enabled: boolean;
+  standing: "approved" | "suspended"; payment_status: "not_started" | "pending" | "verified" | "legacy_enabled";
+  provider_ref: string; revision: number;
 };
 export type VendorOrder = {
   id: string; shop_id: string; reference: string;
@@ -32,10 +44,10 @@ export type StaffDatabase = {
       staff_admins: Table<{ email: string }>;
       vendor_shops: Table<VendorShop, { name: string }>;
       vendor_access: Table<VendorAccess>;
-      vendor_applications: Table<VendorApplication, Omit<VendorApplication, "id" | "status" | "created_at">>;
+      vendor_applications: Table<VendorApplication>;
       vendor_orders: Table<VendorOrder>;
       vendor_sales: Table<VendorSale>;
-      commerce_stalls: Table<{ slug: string; shop_id: string; capacity: number; enabled: boolean }>;
+      commerce_stalls: Table<Storefront>;
       commerce_menu: Table<CommerceMenuRow>;
     };
     Views: Record<never, never>;
@@ -44,6 +56,8 @@ export type StaffDatabase = {
       campusbite_consume_attempt: { Args: { p_bucket: string; p_key_hash: string; p_limit: number; p_seconds: number }; Returns: boolean };
       campusbite_grant_vendor_access: { Args: { p_shop_id: string; p_email: string; p_role: VendorRole }; Returns: undefined };
       commerce_fulfill: { Args: { order_id: string; next_status: string; submitted_code: string }; Returns: boolean };
+      review_vendor_application: { Args: { application_id: string; expected_revision: number; decision: string; note: string; existing_shop?: string }; Returns: undefined };
+      save_vendor_storefront: { Args: { target_shop: string; expected_revision: number; details: Record<string,string | number | boolean> }; Returns: undefined };
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;

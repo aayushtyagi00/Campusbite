@@ -6,7 +6,7 @@ import { createStudentClient, studentCookie, studentSettings } from "@/lib/stude
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
-  if (["orders", "checkout", "account", "sign-in", "recovery"].includes(request.nextUrl.pathname.split("/")[1])) {
+  if (request.nextUrl.pathname.startsWith("/vendor/onboarding") || ["orders", "checkout", "account", "sign-in", "recovery"].includes(request.nextUrl.pathname.split("/")[1])) {
     const settings = studentSettings();
     if (settings && request.method === "GET" && request.cookies.getAll().some(({ name }) => name === studentCookie || name.startsWith(studentCookie + "."))) {
       const client = createStudentClient(settings, () => request.cookies.getAll(), entries => {

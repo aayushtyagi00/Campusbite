@@ -118,30 +118,6 @@ export async function saveStaffPassword(area: StaffArea, _previous: FormState, f
   return { message: "Password saved. You can now sign in with your email and password." };
 }
 
-export async function submitVendorApplication(_previous: FormState, form: FormData): Promise<FormState> {
-  const accepted = { message: "Application received. Access is granted separately by CampusBite after review." };
-  if (field(form, "company_website")) return accepted;
-  const email = emailField(form);
-  const shop_name = field(form, "shop_name");
-  const contact_name = field(form, "contact_name");
-  const phone = field(form, "phone");
-  const location = field(form, "location");
-  const description = field(form, "description");
-
-  if (!email || shop_name.length < 2 || shop_name.length > 100 || contact_name.length < 2 || contact_name.length > 100 ||
-    location.length < 2 || location.length > 150 || description.length > 1200 ||
-    !/^[+\d ().-]{7,24}$/.test(phone) || phone.replace(/\D/g, "").length < 7) {
-    return failure("Check your business name, contact details, and campus location.");
-  }
-
-  const service = staffService();
-  if (!service) return failure(unavailable);
-  if (!await allowAttempt(service, "application-global", "all", 60, 60) ||
-    !await allowAttempt(service, "application-email", email, 3, 3600)) return failure("Applications are limited. Please try again later.");
-  const { error } = await service.from("vendor_applications").insert({ email, shop_name, contact_name, phone, location, description });
-  return error ? failure("Your application could not be saved. Please try again.") : accepted;
-}
-
 export async function createVendorShop(_previous: FormState, form: FormData): Promise<FormState> {
   const session = await adminSession(true);
   if (!session) return failure("Administrator access is required.");
@@ -204,17 +180,6 @@ export async function editTeamMember(area: StaffArea, operation: "add" | "change
   revalidatePath("/admin/access");
   revalidatePath("/vendor/dashboard");
   return { message: operation === "revoke" ? "Access revoked." : operation === "add" ? "Team member added." : "Role updated." };
-}
-
-export async function reviewVendorApplication(_previous: FormState, form: FormData): Promise<FormState> {
-  const session = await adminSession(true);
-  if (!session) return failure("Administrator access is required.");
-  const id = field(form, "id");
-  if (!uuid(id)) return failure("The application is invalid.");
-  const { error } = await session.client.from("vendor_applications").update({ status: "reviewed" }).eq("id", id);
-  if (error) return failure("The application could not be updated.");
-  revalidatePath("/admin/applications");
-  return { message: "Application marked reviewed." };
 }
 
 export async function staffSignOut() {

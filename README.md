@@ -32,9 +32,28 @@ Set `CAMPUSBITE_MODE=live` and `CAMPUSBITE_STAFF_ORIGIN=https://campusbite-lpu.v
 - `https://campusbite-lpu.vercel.app/auth/staff/callback`
 - `https://campusbite-lpu.vercel.app/recovery`
 
-Use numeric code email templates for password recovery and staff password setup. Google Cloud's authorized redirect URI is the Supabase provider callback displayed in the Google provider settings.
+Use numeric code email templates for password recovery and staff password setup. Vendor applicants use the student Auth project to verify a contact email. Include `{{ .Token }}` in both its Confirm signup and Magic Link templates. Google Cloud's authorized redirect URI is the Supabase provider callback displayed in the Google provider settings.
 
 ## Verify
+
+### Roll out vendor onboarding to an existing deployment
+
+1. Open the Supabase project matching the production app's `SUPABASE_URL`. Confirm a recent database backup and run this read-only check in SQL Editor.
+
+   ```sql
+   select
+     to_regclass('public.vendor_applications') is not null as staff_schema,
+     to_regclass('public.commerce_stalls') is not null as commerce_schema,
+     exists (select 1 from pg_policies where schemaname = 'public'
+       and tablename = 'vendor_access' and policyname = 'access_owner_read') as owner_team,
+     to_regprocedure('public.save_vendor_storefront(uuid,integer,jsonb)') is not null as onboarding;
+   ```
+
+2. With the first three flags true and `onboarding` false, the only pending file for this feature is [the vendor onboarding migration](supabase/migrations/202611190002_vendor_onboarding.sql). If this project has been maintained through SQL Editor, run the entire file once in a new query. If the project uses CLI-managed migration history, use the linked project's normal migration workflow and check that `supabase db push --dry-run` lists just that file before running `supabase db push`. A missing prerequisite calls for checking which earlier migration was applied before continuing. Skip the onboarding SQL if the flag is already true and the earlier migration completed successfully. [Supabase migration guide](https://supabase.com/docs/guides/deployment/database-migrations)
+3. Verify all four flags are true. In Storage, confirm the `vendor-onboarding` bucket is private. In the student Auth project, include `{{ .Token }}` in the Confirm signup and Magic Link email templates so both first-time and returning applicants receive a code. [Supabase email templates](https://supabase.com/docs/guides/auth/auth-email-templates)
+4. Deploy the matching app commit immediately after the migration. The migration changes permissions used by the old vendor admin forms. With Vercel's Git integration, merge the feature branch into the project's configured production branch. Check that the production deployment is Ready and that `CAMPUSBITE_MODE=live`. Open `/admin/vendors` with the admin account and use `/vendor` to verify email delivery and that an applicant can save and reopen a draft. [Vercel Git deployments](https://vercel.com/docs/git)
+
+### Local checks
 
 ```sh
 npm run typecheck
@@ -63,7 +82,7 @@ Set `CAMPUSBITE_TEST_BROWSER` to an existing Chromium executable to use it for t
 
 Apply `supabase/migrations/202611190001_shop_owner_team.sql` once after the staff access migration to enable owner team management. From the vendor dashboard, an Owner can add, change, and revoke Staff and Manager memberships in their selected shop. The main administrator assigns Owner roles from Access Management. Creating a shop opens its grant form automatically. For an existing shop, click **Select shop** before granting access.
 
-Owners and managers can view orders and sales for their assigned shops. Staff can view orders for their assigned shops. Both login methods require a verified email with an active grant for the requested portal. Access is evaluated on every protected request and by PostgreSQL row policies. Revoking access blocks future reads even when the person’s auth session still exists. Applications never grant access automatically. Grant changes are recorded in `vendor_access_audit`.
+Owners and managers can view orders and sales for their assigned shops. Staff can view orders for their assigned shops. Both login methods require a verified email with an active grant for the requested portal. Access is evaluated on every protected request and by PostgreSQL row policies. Revoking access blocks future reads even when the person’s auth session still exists. Submitting an application creates no shop access. An explicit admin approval grants its verified applicant the Owner role. Grant changes are recorded in `vendor_access_audit`.
 
 Before connecting live commerce, verify email delivery and role checks against your Supabase project using two different shops and two test accounts. Enable administrator MFA as part of the production auth rollout. Expired rows in the private `staff_rate_limits` table can be deleted by a scheduled database maintenance job.
 
@@ -80,11 +99,11 @@ Before connecting live commerce, verify email delivery and role checks against y
    | `RAZORPAY_WEBHOOK_SECRET` | A random secret you set in Razorpay when creating the webhook |
    | `COMMERCE_JOB_SECRET` | A different random secret, shared only with the scheduler |
 
-2. In the staff/commerce Supabase project, apply `supabase/migrations/202611180001_staff_access.sql` if it has never been applied, then apply `supabase/migrations/202611180002_commerce.sql`. Load `supabase/seed.sql` for the staging menu. Review actual vendors, menu items, menu prices and opening hours before using live keys. Vendor owners and managers can update prices and mark items sold out in their dashboard. Add or edit catalog entries in `commerce_menu` as the database owner. Storefront names, hours and locations are defined in `src/lib/campus.ts`.
+2. Apply the migrations in `supabase/migrations` in filename order to the staff/commerce Supabase project with Storage enabled. For an existing installation through the owner-team migration, apply only `202611190002_vendor_onboarding.sql`. It preserves the three pilot storefront URLs, converts historical Reviewed applications to Under review, and creates the private vendor-onboarding PDF bucket. Previously enabled payments display a legacy status until an admin records verification. Load `supabase/seed.sql` for the optional staging menu. Live storefronts come from the database. Preview mode uses the sample catalog.
 3. In the Supabase project used for student Auth, enable Email with confirmation, configure SMTP, and include `{{ .Token }}` in both **Confirm signup** and **Reset password** email templates. Enable Google using its OAuth client ID and secret in **Supabase Authentication → Providers → Google**. Add that Supabase project's callback URL in Google Cloud. In each project, set Authentication → URL Configuration → Site URL to its public HTTPS app origin. In the student project, allow the exact URL `<student-origin>/auth/student/callback`. Set `CAMPUSBITE_STUDENT_ORIGIN` if students use a different hostname from staff. Open the app on the configured hostname so the browser can return its sign-in cookie. Use a separate OAuth client or authorize both Supabase callback URLs if sharing a Google OAuth client. Enable the invite-only hook only on a dedicated staff Auth project. The shared project needs public registration with email confirmation. [Supabase Google OAuth](https://supabase.com/docs/guides/auth/social-sign-in/auth-google)
 4. In Razorpay Test Mode, enable automatic capture and configure `https://YOUR-STAGING-HOST/api/payments/razorpay` for `payment.captured` and `refund.processed`. Match the webhook secret to the app setting. A local checkout callback verifies completed payments directly, and the webhook covers delayed payments and browser interruptions. Verify the webhook using the staging HTTPS URL. [Razorpay Checkout](https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/integration-steps) · [Webhook validation](https://razorpay.com/docs/webhooks/validate-test)
 5. Configure a scheduler to **POST** `/api/jobs/commerce` every minute with `Authorization: Bearer <COMMERCE_JOB_SECRET>`. It expires held and unaccepted orders and processes the refund queue. Alert on failed job runs and check Razorpay and the admin order list when a refund keeps retrying.
-6. In **Admin → Access Management**, create a vendor shop and authorize its staff. In **Admin → Commerce operations**, link a staging storefront to that shop, set its capacity, and enable checkout. Test during the storefront’s listed hours in IST. Use two student accounts to verify order isolation, and test payment, rejection/refund, acceptance, preparation, pickup code, and completed sale. The app keeps order details at `/orders`.
+6. At `/vendor`, verify the applicant email, save a draft, attach supporting PDFs, accept the displayed agreement and submit. In **Admin → Vendor applications**, start review, request corrections with a message, reject, or approve. Approval creates or explicitly links a shop and grants its applicant owner access. Applicants can track decisions and resubmit corrections at `/vendor/onboarding`. In **Admin → Current Vendors**, open the shop to publish its listing, add menu items, record the verified payment-provider reference, and enable paid orders. A published stall can be browse-only. Suspension hides its listing and disables new reservations. Test during storefront hours in IST with two student accounts and complete the payment, rejection/refund, acceptance, preparation, pickup and sale flows. Student order details are at `/orders`.
 
 ### Peak-time testing
 

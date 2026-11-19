@@ -2,11 +2,14 @@ import Link from "next/link";
 import { ArrowRight, ClipboardList, Store } from "lucide-react";
 import { staffConfigured, staffOrigin } from "@/lib/staff/supabase";
 import type { StaffArea } from "@/lib/staff/database";
-import { StaffSignInForm, VendorApplicationForm } from "./staff-forms";
+import { StaffSignInForm } from "./staff-forms";
+import { ApplicantEntry } from "./applicant-entry";
+import { applicantSession } from "@/lib/vendor-applicant";
 import { Back, Brand, Notice, Photo } from "./ui";
 
-export function VendorHome() {
+export async function VendorHome() {
   const configured = staffConfigured();
+  const applicant = configured ? await applicantSession() : null;
   return <>
     <header className="student-header"><div className="wrap staff-entry-header">
       <Brand />
@@ -27,9 +30,9 @@ export function VendorHome() {
       </section>
       <section id="vendor-application" className="panel panel-pad stack vendor-application">
         <h2 className="row"><ClipboardList size={20} /> Apply as a Vendor</h2>
-        <p>Share your shop and contact details for review. Workspace access is assigned by a CampusBite administrator after review.</p>
+        <p>Save your business details and documents, then submit them for review. You can return here to check a decision or make corrections.</p>
         {!configured && <Notice>Application submissions are unavailable until the portal is configured.</Notice>}
-        <VendorApplicationForm disabled={!configured} />
+        <ApplicantEntry disabled={!configured} email={applicant?.email} />
       </section>
     </main>
   </>;

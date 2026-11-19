@@ -1,3 +1,4 @@
+import { VendorOnboarding } from "@/components/vendor-onboarding";
 import Link from "next/link";
 import { ShopMembers } from "@/components/shop-members";
 import { StaffForm } from "@/components/staff-forms";
@@ -15,9 +16,10 @@ import { VendorMenu } from "@/components/vendor-menu";
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ screen?: string[] }>;
-  searchParams: Promise<{ shop?: string | string[]; members?: string; error?: string | string[] }>;
+  searchParams: Promise<{ shop?: string | string[]; members?: string; name?: string; error?: string | string[] }>;
 }) {
   const { screen = [] } = await params;
+  if (screen[0] === "onboarding" && screen.length <= 2) return <VendorOnboarding id={screen[1]} name={(await searchParams).name} />;
   if (screen.length === 0) return <VendorHome />;
   if (screen.length === 1 && screen[0] === "sign-in") {
     const session = await staffSession();
@@ -30,7 +32,7 @@ export default async function Page({ params, searchParams }: {
   const memberships = await vendorMemberships(session);
   if (!memberships.data?.length) redirect("/vendor/sign-in");
   if (screen.length !== 1) notFound();
-  if (["board", "menu", "availability", "onboarding", "earnings"].includes(screen[0])) redirect("/vendor/dashboard");
+  if (["board", "menu", "availability", "earnings"].includes(screen[0])) redirect("/vendor/dashboard");
   if (screen[0] !== "dashboard") notFound();
 
   const { shop: requested, members } = await searchParams;
