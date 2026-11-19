@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NavigationHint } from "./navigation-hint";
 import { ArrowRight } from "lucide-react";
 import { createVendorShop, reviewVendorApplication, revokeVendorAccess, saveVendorAccess } from "@/lib/staff/actions";
 import { vendorRoles, type VendorAccess, type VendorApplication, type VendorShop } from "@/lib/staff/database";
@@ -8,10 +9,10 @@ import { Empty, Status } from "./ui";
 export function AdminOverview({ shops, applications }: { shops: number; applications: number }) {
   return <>
     <div className="ops-heading"><div><h1>CampusBite Admin</h1><p>Review vendor applications and control access to campus shops.</p></div>
-      <Link className="button" href="/admin/access">Manage vendor access</Link></div>
+      <Link className="button" href="/admin/access">Manage vendor access<NavigationHint /></Link></div>
     <div className="metrics">
-      <Link className="panel panel-pad metric" href="/admin/access"><p>Vendor shops</p><strong>{shops}</strong><ArrowRight className="metric-arrow" size={17} /></Link>
-      <Link className="panel panel-pad metric" href="/admin/applications"><p>Applications awaiting review</p><strong>{applications}</strong><ArrowRight className="metric-arrow" size={17} /></Link>
+      <Link className="panel panel-pad metric" href="/admin/access"><p>Vendor shops</p><strong>{shops}</strong><ArrowRight className="metric-arrow" size={17} /><NavigationHint /></Link>
+      <Link className="panel panel-pad metric" href="/admin/applications"><p>Applications awaiting review</p><strong>{applications}</strong><ArrowRight className="metric-arrow" size={17} /><NavigationHint /></Link>
     </div>
   </>;
 }
@@ -31,7 +32,7 @@ export function AccessManagement({ shops, selected, page, grants, shopPages }: {
       <section className="panel panel-pad stack">
         <h2>Select a shop</h2>
         {shops.map(shop => <Link key={shop.id} href={`/admin/access?page=${page}&shop=${shop.id}`}
-          aria-current={shop.id === selected?.id ? "true" : undefined}>{shop.name}</Link>)}
+          aria-current={shop.id === selected?.id ? "true" : undefined}>{shop.name}<NavigationHint /></Link>)}
         {shopPages}
       </section>
       <section className="panel panel-pad stack">
@@ -65,7 +66,7 @@ export function AccessManagement({ shops, selected, page, grants, shopPages }: {
 export function VendorApplications({ applications }: { applications: VendorApplication[] }) {
   return <>
     <div className="ops-heading"><div><h1>Vendor applications</h1><p>Review shop details before granting access.</p></div>
-      <Link className="button secondary" href="/admin/access">Access Management</Link></div>
+      <Link className="button secondary" href="/admin/access">Access Management<NavigationHint /></Link></div>
     <div className="stack">
       {!applications.length && <Empty title="No applications yet" />}
       {applications.map(item => <article className="panel panel-pad stack" key={item.id}>

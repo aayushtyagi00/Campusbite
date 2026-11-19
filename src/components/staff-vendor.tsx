@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NavigationHint } from "./navigation-hint";
 import { money, statuses } from "@/lib/campus";
 import { vendorRoles, type VendorOrder, type VendorRole, type VendorSale, type VendorShop } from "@/lib/staff/database";
 import { Empty, Status } from "./ui";
@@ -16,7 +17,7 @@ export function ShopDashboard({ shop, shops, role, orders, sales, live }: {
     <div className="ops-heading"><div><h1>{shop.name}</h1><p>Shop dashboard · Campus times in IST</p></div><Status tone="good">{vendorRoles[role]}</Status></div>
     {shops.length > 1 && <nav aria-label="Your shops" className="chips staff-records">
       {shops.map(item => <Link key={item.id} className={`button compact${item.id === shop.id ? "" : " secondary"}`}
-        aria-current={item.id === shop.id ? "page" : undefined} href={`/vendor/dashboard?shop=${item.id}`}>{item.name}</Link>)}
+        aria-current={item.id === shop.id ? "page" : undefined} href={`/vendor/dashboard?shop=${item.id}`}>{item.name}<NavigationHint /></Link>)}
     </nav>}
     <section className="panel panel-pad stack staff-records">
       <h2>Recent shop orders</h2>

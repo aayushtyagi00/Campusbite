@@ -43,3 +43,38 @@ test("an incomplete student callback returns to sign-in on the same host", async
   expect(response.headers().location).toBe("/sign-in?error=google");
   expect(response.headers()["cache-control"]).toContain("no-store");
 });
+
+test("admin navigation keeps the current workspace visible during a slow shop query", async ({ page, context }) => {
+  const user = { id: "00000000-0000-4000-8000-000000000002", email: "admin@example.test", email_confirmed_at: "2026-01-01T00:00:00Z" };
+  let releaseShops = () => {};
+  const holdShops = new Promise<void>(resolve => { releaseShops = resolve; });
+  let waiting = false;
+  const fixture = createServer(async (req, res) => {
+    const path = req.url?.split("?")[0];
+    res.setHeader("Content-Type", "application/json");
+    if (path === "/auth/v1/user") return res.end(JSON.stringify(user));
+    if (path === "/rest/v1/rpc/campusbite_is_admin") return res.end("true");
+    if (path === "/rest/v1/vendor_shops" && req.method === "GET") {
+      waiting = true;
+      await holdShops;
+    }
+    res.setHeader("Content-Range", "*/0");
+    res.end("[]");
+  });
+  await new Promise<void>((resolve, reject) => fixture.once("error", reject).listen(3110, "127.0.0.1", resolve));
+  try {
+    const session = { access_token: "local-test-token", refresh_token: "local-test-refresh", expires_at: Math.floor(Date.now() / 1000) + 3600, user };
+    await context.addCookies([{ name: "campusbite-staff", value: "base64-" + Buffer.from(JSON.stringify(session)).toString("base64url"), url: "http://127.0.0.1:3109" }]);
+    await page.goto("/admin");
+    const nav = page.getByRole("navigation", { name: "Admin navigation" });
+    await nav.getByRole("link", { name: "Access Management" }).click();
+    await expect.poll(() => waiting).toBe(true);
+    await expect(nav).toBeVisible();
+    await expect(page.getByRole("heading", { name: "CampusBite Admin" })).toBeVisible();
+    releaseShops();
+    await expect(page.getByRole("heading", { name: "Access Management" })).toBeVisible();
+  } finally {
+    releaseShops();
+    await new Promise<void>(resolve => fixture.close(() => resolve()));
+  }
+});

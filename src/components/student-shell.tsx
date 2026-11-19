@@ -2,6 +2,7 @@
 
 import { ArrowRight, Check, ChevronDown, Home, MapPin, ReceiptText, ShoppingBag, UserRound, Utensils, X } from "lucide-react";
 import Link from "next/link";
+import { NavigationHint } from "./navigation-hint";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { cartItems, LiveStorefronts, update, usePreview, usePreviewReady } from "@/lib/preview";
@@ -45,9 +46,9 @@ function ProfileMenu({ selectCourt }: { selectCourt: () => void }) {
         <span className="profile-avatar" aria-hidden="true"><UserRound size={19} /></span>
         <div><strong>CampusBite account</strong><small>CampusBite ordering</small></div>
       </div>
-      <Link href="/orders" onClick={close}><ReceiptText size={19} /><span><strong>My orders</strong><small>Track pickup and view order history</small></span></Link>
+      <Link href="/orders" onClick={close}><ReceiptText size={19} /><span><strong>My orders</strong><small>Track pickup and view order history</small></span><NavigationHint /></Link>
       <button type="button" onClick={() => { close(); selectCourt(); }}><MapPin size={19} /><span><strong>Select Food Court</strong><small>Change your campus pickup area</small></span></button>
-      <Link href="/account" onClick={close}><UserRound size={19} /><span><strong>My account</strong><small>Manage your account</small></span></Link>
+      <Link href="/account" onClick={close}><UserRound size={19} /><span><strong>My account</strong><small>Manage your account</small></span><NavigationHint /></Link>
     </div>
   </details>;
 }
@@ -75,14 +76,14 @@ function StudentNavigation({ children }: { children: React.ReactNode }) {
     <header className="student-header"><div className="wrap header-inner">
       <div className="student-brand"><Brand /></div>
       <nav aria-label="Main navigation" className="student-nav"><div className="nav-inner">
-        {navigation.map(({ href, label }) => <Link key={href} href={href} aria-current={active === href ? "page" : undefined}>{label}</Link>)}
+        {navigation.map(({ href, label }) => <Link key={href} prefetch={["/", "/order-online", "/about"].includes(href) ? true : undefined} href={href} aria-current={active === href ? "page" : undefined}>{label}<NavigationHint /></Link>)}
       </div></nav>
       <div className="header-actions">
         <button className="header-action court-trigger" ref={courtTrigger} type="button" onClick={selectCourt} aria-haspopup="dialog" aria-label={`Select Food Court, ${currentCourt.name}`} disabled={!ready}>
           <MapPin size={16} /> <span className="court-label"><strong>Select Food Court</strong><small>{currentCourt.id === "unimall" && <span className="mobile-court-prefix">LPU · </span>}{currentCourt.name}</small></span><ChevronDown size={13} />
         </button>
         <ProfileMenu key={path} selectCourt={selectCourt} />
-        <Link href="/bag" className="header-action cart-trigger" aria-label={`Cart, ${count} ${count === 1 ? "item" : "items"}`}><ShoppingBag size={20} /><strong className="cart-label">Cart</strong>{count > 0 && <span className="cart-count">{count}</span>}</Link>
+        <Link href="/bag" className="header-action cart-trigger" aria-label={`Cart, ${count} ${count === 1 ? "item" : "items"}`}><ShoppingBag size={20} /><strong className="cart-label">Cart</strong>{count > 0 && <span className="cart-count">{count}</span>}<NavigationHint /></Link>
       </div>
     </div></header>
     <dialog className="panel dialog court-dialog" ref={courtDialog} aria-labelledby="food-court-title"
@@ -104,11 +105,11 @@ function StudentNavigation({ children }: { children: React.ReactNode }) {
     <StudentFooter />
     {showBag && <aside className="bag-float">
       <div><strong>{count} {count === 1 ? "item" : "items"} · {money(total)}</strong><small>{data.stalls.find(stall => stall.id === items[0]?.stall)?.name}</small></div>
-      <Link className="button" href="/bag">View bag <ArrowRight size={17} /></Link>
+      <Link className="button" href="/bag">View bag <ArrowRight size={17} /><NavigationHint /></Link>
     </aside>}
     <nav aria-label="Main navigation" className="mobile-student-nav">
       <div className="wrap mobile-nav-inner">
-        {mobileNavigation.map(({ href, label, icon: Icon }) => <Link key={href} href={href} aria-current={mobileActive === href ? "page" : undefined}><Icon size={20} aria-hidden="true" />{label}</Link>)}
+        {mobileNavigation.map(({ href, label, icon: Icon }) => <Link key={href} prefetch={["/", "/order-online", "/about"].includes(href) ? true : undefined} href={href} aria-current={mobileActive === href ? "page" : undefined}><Icon size={20} aria-hidden="true" />{label}<NavigationHint /></Link>)}
       </div>
     </nav>
   </>;

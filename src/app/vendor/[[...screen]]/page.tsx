@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { OpsShell } from "@/components/ops-shell";
 import { StaffSignIn, VendorHome } from "@/components/staff-entry";
@@ -50,13 +51,20 @@ export default async function Page({ params, searchParams }: {
   }
   const shop = shops.data.find(item => item.id === grant.shop_id);
   if (!shop) notFound();
-  const mapping = live && grant.role !== "staff" ? await client.from("commerce_stalls")
-    .select("slug").eq("shop_id", shop.id).maybeSingle() : null;
-  const menu = mapping?.data ? await client.from("commerce_menu")
-    .select("id,name,price,sold_out").eq("stall_slug", mapping.data.slug).order("name") : null;
   return <OpsShell area="vendor" path="/vendor/dashboard" email={email}>
     <ShopDashboard shop={shop} shops={shops.data} role={grant.role} orders={[...orders.data, ...(recent?.data ?? [])]} sales={sales?.data} live={live} />
-    {mapping?.error || menu?.error ? <Notice>Menu editing is temporarily unavailable.</Notice> :
-      menu?.data && <VendorMenu items={menu.data} />}
+    {live && grant.role !== "staff" && <Suspense key={shop.id} fallback={null}>
+      <ShopMenu client={client} shopId={shop.id} />
+    </Suspense>}
   </OpsShell>;
+}
+
+async function ShopMenu({ client, shopId }: {
+  client: NonNullable<Awaited<ReturnType<typeof staffSession>>>["client"]; shopId: string;
+}) {
+  const mapping = await client.from("commerce_stalls").select("slug").eq("shop_id", shopId).maybeSingle();
+  if (mapping.error) return <Notice>Menu editing is temporarily unavailable.</Notice>;
+  if (!mapping.data) return null;
+  const menu = await client.from("commerce_menu").select("id,name,price,sold_out").eq("stall_slug", mapping.data.slug).order("name");
+  return menu.error ? <Notice>Menu editing is temporarily unavailable.</Notice> : <VendorMenu items={menu.data} />;
 }

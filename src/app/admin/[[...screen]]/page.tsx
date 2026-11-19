@@ -59,14 +59,19 @@ export default async function Page({ params, searchParams }: {
     const query = await searchParams;
     const page = pageNumber(query.page);
     const offset = (page - 1) * pageSize;
-    const shops = await client.from("vendor_shops").select("id,name,created_at")
-      .order("name").order("id").range(offset, offset + pageSize);
-    const visible = shops.data?.slice(0, pageSize) ?? [];
-    const selected = visible.find(shop => shop.id === query.shop) ?? visible[0];
     const members = pageNumber(query.members);
     const start = (members - 1) * pageSize;
-    const grants = selected ? await client.from("vendor_access").select("shop_id,email,role,created_at")
-      .eq("shop_id", selected.id).order("email").range(start, start + pageSize) : null;
+    const requestedShop = typeof query.shop === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(query.shop)
+      ? query.shop : undefined;
+    const membersOf = (id: string) => client.from("vendor_access").select("shop_id,email,role,created_at")
+      .eq("shop_id", id).order("email").range(start, start + pageSize);
+    const [shops, requestedGrants] = await Promise.all([
+      client.from("vendor_shops").select("id,name,created_at").order("name").order("id").range(offset, offset + pageSize),
+      requestedShop ? membersOf(requestedShop) : null,
+    ]);
+    const visible = shops.data?.slice(0, pageSize) ?? [];
+    const selected = visible.find(shop => shop.id === requestedShop) ?? visible[0];
+    const grants = selected && selected.id !== requestedShop ? await membersOf(selected.id) : requestedGrants;
     return <OpsShell area="admin" path="/admin/access" email={email}>
       {shops.error || grants?.error ? <Notice>Access records are temporarily unavailable.</Notice> : <>
         <AccessManagement shops={visible} selected={selected} page={page} grants={grants?.data?.slice(0, pageSize) ?? []}

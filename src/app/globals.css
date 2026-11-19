@@ -447,3 +447,21 @@ svg { flex-shrink: 0; }
 @media (min-width: 1240px) {
   .explore-results .stall-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+.navigation-hint {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 3px;
+  z-index: 100;
+  pointer-events: none;
+  background: currentColor;
+  transform-origin: left;
+  animation: navigation-pending 1s ease-in-out 150ms infinite alternate both;
+}
+@keyframes navigation-pending {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(.85); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .navigation-hint { animation: none; }
+}

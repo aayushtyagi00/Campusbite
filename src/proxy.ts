@@ -14,7 +14,8 @@ export async function proxy(request: NextRequest) {
         response = NextResponse.next({ request });
         for (const { name, value, options } of entries) response.cookies.set(name, value, options);
       });
-      await client.auth.getClaims();
+      // Refresh expiring cookies here. Protected pages and actions independently verify identity.
+      await client.auth.getSession();
     }
     response.headers.set("Cache-Control", "private, no-store");
     return response;
@@ -33,7 +34,7 @@ export async function proxy(request: NextRequest) {
         },
       },
     });
-    await client.auth.getClaims();
+    await client.auth.getSession();
   }
   response.headers.set("Cache-Control", "private, no-store");
   return response;
