@@ -88,13 +88,14 @@ Before connecting live commerce, verify email delivery and role checks against y
 
 The database takes a transaction lock per shop and pickup window to enforce capacity during a rush. Duplicate requests reuse the same reservation, abandoned holds expire, and a capture arriving after the hold deadline goes to the refund queue. Public catalog reads are cached and authenticated order reads use indexes. The active vendor board refreshes only while visible.
 
-Run the reservation burst below against a **dedicated staging Supabase project** and an enabled test storefront. It reserves synthetic orders in a free pickup window, prints acceptance and overflow counts with the p95 reservation latency, and fails if the database accepts more than the configured capacity. It creates no gateway payments. Test holds expire automatically.
+Run the reservation burst below against a **dedicated staging Supabase project** and an enabled test storefront. It reserves synthetic orders in a free pickup window, reports stored orders, successful reservations, full-window responses, unexpected error rate, throughput and median/p95 reservation latency, and fails if the database accepts more than the configured capacity. It creates no gateway payments. Test holds expire automatically.
 
 ```powershell
+# Store STAGING_SUPABASE_URL and STAGING_SUPABASE_SECRET_KEY in an ignored .env.staging.local file.
 $env:LOAD_TEST_STAGING = '1'
 $env:LOAD_TEST_STALL = 'rolling-kitchen'
 $env:LOAD_TEST_CONCURRENCY = '50'
-node --env-file=.env.local tests/checkout-load.mjs
+node --env-file=.env.staging.local tests/checkout-load.mjs
 ```
 
 Test expected normal traffic and meal-time bursts against the chosen deployment before switching to live payments. The staging script exercises database contention. It does not measure browser checkout, auth provider limits, gateway throughput, or production infrastructure. Push notifications, automated vendor payouts, shared public review storage, and tax/commission configuration are outside the current checkout flow.
