@@ -26,6 +26,7 @@ test("PostgreSQL enforces staff access independently of the web UI", async t => 
       as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   `);
   await db.exec(await readFile(new URL("../supabase/migrations/202611180001_staff_access.sql", import.meta.url), "utf8"));
+  await db.exec(await readFile(new URL("../supabase/migrations/202611190001_shop_owner_team.sql", import.meta.url), "utf8"));
   for (const [actor, id] of Object.entries(ids)) {
     await db.query("insert into auth.users values ($1, $2, $3)", [id, `${actor}@example.test`, actor === "unverified" ? null : "2026-11-18T00:00:00Z"]);
   }
@@ -95,6 +96,20 @@ test("PostgreSQL enforces staff access independently of the web UI", async t => 
     });
     await assert.rejects(asUser("staff", tx => grant(tx, shopB, "staff", "owner")), /row.level security/i);
     await assert.rejects(asUser("owner", tx => tx.query("insert into public.vendor_shops (name) values ('Unapproved')")), /row.level security/i);
+  });
+
+  await t.test("owners manage only staff and managers in their own shop", async () => {
+    await asUser("owner", async tx => {
+      await grant(tx, shopA, "new-member", "staff");
+      await grant(tx, shopA, "new-member", "manager");
+      const removed = await tx.query("delete from public.vendor_access where shop_id=$1 and email='new-member@example.test' returning role", [shopA]);
+      assert.deepEqual(removed.rows, [{role: "manager"}]);
+      const owners = await tx.query("delete from public.vendor_access where role='owner' returning role");
+      assert.deepEqual(owners.rows, []);
+    });
+    await assert.rejects(asUser("owner", tx => grant(tx, shopB, "new-member", "staff")), /row.level security/i);
+    await assert.rejects(asUser("owner", tx => grant(tx, shopA, "staff", "owner")), /row.level security/i);
+    await assert.rejects(asUser("manager", tx => grant(tx, shopB, "new-member", "staff")), /row.level security/i);
   });
 
   await t.test("administrator review, role changes, revocations, and audit records", async () => {

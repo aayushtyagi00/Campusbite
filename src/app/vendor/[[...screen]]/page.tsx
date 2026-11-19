@@ -1,3 +1,7 @@
+import Link from "next/link";
+import { ShopMembers } from "@/components/shop-members";
+import { StaffForm } from "@/components/staff-forms";
+import { editTeamMember } from "@/lib/staff/actions";
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { OpsShell } from "@/components/ops-shell";
@@ -11,7 +15,7 @@ import { VendorMenu } from "@/components/vendor-menu";
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ screen?: string[] }>;
-  searchParams: Promise<{ shop?: string | string[]; error?: string | string[] }>;
+  searchParams: Promise<{ shop?: string | string[]; members?: string; error?: string | string[] }>;
 }) {
   const { screen = [] } = await params;
   if (screen.length === 0) return <VendorHome />;
@@ -29,7 +33,7 @@ export default async function Page({ params, searchParams }: {
   if (["board", "menu", "availability", "onboarding", "earnings"].includes(screen[0])) redirect("/vendor/dashboard");
   if (screen[0] !== "dashboard") notFound();
 
-  const requested = (await searchParams).shop;
+  const { shop: requested, members } = await searchParams;
   const grant = requested === undefined ? memberships.data[0] : memberships.data.find(item => item.shop_id === requested);
   if (!grant) notFound();
   const { client, email } = session;
@@ -53,6 +57,9 @@ export default async function Page({ params, searchParams }: {
   if (!shop) notFound();
   return <OpsShell area="vendor" path="/vendor/dashboard" email={email}>
     <ShopDashboard shop={shop} shops={shops.data} role={grant.role} orders={[...orders.data, ...(recent?.data ?? [])]} sales={sales?.data} live={live} />
+    {grant.role === "owner" && <Suspense key={shop.id + "-team"} fallback={null}>
+      <OwnerTeam client={client} shopId={shop.id} members={members} />
+    </Suspense>}
     {live && grant.role !== "staff" && <Suspense key={shop.id} fallback={null}>
       <ShopMenu client={client} shopId={shop.id} />
     </Suspense>}
@@ -67,4 +74,31 @@ async function ShopMenu({ client, shopId }: {
   if (!mapping.data) return null;
   const menu = await client.from("commerce_menu").select("id,name,price,sold_out").eq("stall_slug", mapping.data.slug).order("name");
   return menu.error ? <Notice>Menu editing is temporarily unavailable.</Notice> : <VendorMenu items={menu.data} />;
+}
+
+async function OwnerTeam({ client, shopId, members }: {
+  client: NonNullable<Awaited<ReturnType<typeof staffSession>>>["client"]; shopId: string; members?: string;
+}) {
+  const page = members && /^[1-9]\d{0,6}$/.test(members) ? Number(members) : 1;
+  const offset = (page - 1) * 25;
+  const grants = await client.from("vendor_access").select("shop_id,email,role,created_at")
+    .eq("shop_id", shopId).order("email").range(offset, offset + 25);
+  if (grants.error) return <Notice>Shop team is temporarily unavailable.</Notice>;
+  const href = `/vendor/dashboard?shop=${shopId}&members=`;
+  return <section className="panel panel-pad stack staff-records">
+    <h2>Shop team</h2>
+    <StaffForm action={editTeamMember.bind(null, "vendor", "add")} label="Add team member">
+      <input name="shop_id" type="hidden" value={shopId} />
+      <div className="form-grid">
+        <label className="field">Team member email<input name="email" type="email" required maxLength={254} /></label>
+        <label className="field">Role<select name="role"><option value="staff">Staff</option><option value="manager">Manager</option></select></label>
+      </div>
+    </StaffForm>
+    <ShopMembers area="vendor" shopId={shopId} grants={grants.data.slice(0, 25)} />
+    {(page > 1 || grants.data.length > 25) && <nav className="row" aria-label="Team pages">
+      {page > 1 && <Link href={href + (page - 1)}>Previous</Link>}
+      <span>Page {page}</span>
+      {grants.data.length > 25 && <Link href={href + (page + 1)}>Next</Link>}
+    </nav>}
+  </section>;
 }

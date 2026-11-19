@@ -465,3 +465,6 @@ svg { flex-shrink: 0; }
 @media (prefers-reduced-motion: reduce) {
   .navigation-hint { animation: none; }
 }
+
+.access-controls { padding: 0; border: 0; margin: 0; min-width: 0; }
+.access-row > form { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem; }

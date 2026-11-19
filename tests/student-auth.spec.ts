@@ -49,14 +49,41 @@ test("admin navigation keeps the current workspace visible during a slow shop qu
   let releaseShops = () => {};
   const holdShops = new Promise<void>(resolve => { releaseShops = resolve; });
   let waiting = false;
+  const firstShop = { id: "00000000-0000-4000-8000-000000000010", name: "First kitchen", created_at: user.email_confirmed_at };
+  const newShop = { ...firstShop, id: "00000000-0000-4000-8000-000000000020", name: "Second kitchen" };
+  const shops = [firstShop];
+  const grants: { shop_id: string; email: string; role: string }[] = [];
   const fixture = createServer(async (req, res) => {
     const path = req.url?.split("?")[0];
     res.setHeader("Content-Type", "application/json");
     if (path === "/auth/v1/user") return res.end(JSON.stringify(user));
     if (path === "/rest/v1/rpc/campusbite_is_admin") return res.end("true");
+    const query = new URL(req.url!, "http://localhost").searchParams;
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    if (path === "/rest/v1/vendor_shops" && req.method === "POST") {
+      shops.push(newShop);
+      return res.end(JSON.stringify({ id: newShop.id }));
+    }
     if (path === "/rest/v1/vendor_shops" && req.method === "GET") {
       waiting = true;
       await holdShops;
+      const id = query.get("id");
+      return res.end(JSON.stringify(id ? shops.filter(shop => id === "eq." + shop.id) : shops));
+    }
+    if (path === "/rest/v1/rpc/campusbite_grant_vendor_access") {
+      const { p_shop_id, p_email, p_role } = JSON.parse(body);
+      grants.push({ shop_id: p_shop_id, email: p_email, role: p_role });
+      return res.end();
+    }
+    if (path === "/rest/v1/vendor_access") {
+      const rows = grants.filter(g => "eq." + g.shop_id === query.get("shop_id"));
+      if (req.method === "PATCH") {
+        const target = rows.find(g => "eq." + g.email === query.get("email") && "eq." + g.role === query.get("role"));
+        if (target) target.role = JSON.parse(body).role;
+        return res.end(JSON.stringify(target ? [target] : []));
+      }
+      return res.end(JSON.stringify(rows));
     }
     res.setHeader("Content-Range", "*/0");
     res.end("[]");
@@ -73,6 +100,23 @@ test("admin navigation keeps the current workspace visible during a slow shop qu
     await expect(page.getByRole("heading", { name: "CampusBite Admin" })).toBeVisible();
     releaseShops();
     await expect(page.getByRole("heading", { name: "Access Management" })).toBeVisible();
+    await expect(page.getByLabel("Approved email")).toHaveCount(0);
+    await page.getByRole("button", { name: "Select shop First kitchen" }).click();
+    await expect(page.getByRole("heading", { name: "Grant access to First kitchen" })).toBeVisible();
+    await page.getByLabel("Vendor shop name").fill(newShop.name);
+    await page.getByRole("button", { name: "Create shop" }).click();
+    await expect(page.getByRole("heading", { name: "Grant access to Second kitchen" })).toBeVisible();
+    const email = "member@example.test";
+    await page.getByLabel("Approved email").fill(email);
+    await page.getByRole("button", { name: "Grant access to Second kitchen" }).click();
+    const memberRole = page.getByLabel(`Role for ${email}`);
+    await expect(memberRole).toHaveValue("staff");
+    await memberRole.selectOption("manager");
+    await page.getByRole("button", { name: "Change role" }).click();
+    await expect.poll(() => grants).toEqual([{ shop_id: newShop.id, email, role: "manager" }]);
+    await page.getByRole("button", { name: "Select shop First kitchen" }).click();
+    await expect(page.getByRole("heading", { name: "People with access to First kitchen" })).toBeVisible();
+    await expect(memberRole).toHaveCount(0);
   } finally {
     releaseShops();
     await new Promise<void>(resolve => fixture.close(() => resolve()));

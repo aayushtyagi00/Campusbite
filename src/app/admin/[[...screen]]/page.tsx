@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { OpsShell } from "@/components/ops-shell";
-import { AccessManagement, AdminOverview, VendorApplications } from "@/components/staff-admin";
+import { AccessManagement } from "@/components/access-management";
+import { AdminOverview, VendorApplications } from "@/components/staff-admin";
 import { StaffSignIn } from "@/components/staff-entry";
 import { Notice } from "@/components/ui";
 import { adminSession } from "@/lib/staff/access";
@@ -65,15 +66,15 @@ export default async function Page({ params, searchParams }: {
       ? query.shop : undefined;
     const membersOf = (id: string) => client.from("vendor_access").select("shop_id,email,role,created_at")
       .eq("shop_id", id).order("email").range(start, start + pageSize);
-    const [shops, requestedGrants] = await Promise.all([
+    const [shops, shop, grants] = await Promise.all([
       client.from("vendor_shops").select("id,name,created_at").order("name").order("id").range(offset, offset + pageSize),
+      requestedShop ? client.from("vendor_shops").select("id,name,created_at").eq("id", requestedShop).maybeSingle() : null,
       requestedShop ? membersOf(requestedShop) : null,
     ]);
     const visible = shops.data?.slice(0, pageSize) ?? [];
-    const selected = visible.find(shop => shop.id === requestedShop) ?? visible[0];
-    const grants = selected && selected.id !== requestedShop ? await membersOf(selected.id) : requestedGrants;
+    const selected = shop?.data ?? undefined;
     return <OpsShell area="admin" path="/admin/access" email={email}>
-      {shops.error || grants?.error ? <Notice>Access records are temporarily unavailable.</Notice> : <>
+      {shops.error || shop?.error || grants?.error ? <Notice>Access records are temporarily unavailable.</Notice> : <>
         <AccessManagement shops={visible} selected={selected} page={page} grants={grants?.data?.slice(0, pageSize) ?? []}
           shopPages={<PageLinks page={page} more={(shops.data?.length ?? 0) > pageSize} href="/admin/access?page=" label="Shop pages" />} />
         {selected && <PageLinks page={members} more={(grants?.data?.length ?? 0) > pageSize}

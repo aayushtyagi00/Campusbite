@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { adminSession, allowAttempt, invited, invitedUser, isStaffArea, staffDashboard } from "./access";
-import { clearStaffCookies, clearStaffOAuthCookies, staffAuthAttempt, staffClient, staffOAuthAreaCookie, staffOAuthCookieName, staffOrigin, staffService } from "./supabase";
+import { clearStaffCookies, clearStaffOAuthCookies, staffAuthAttempt, staffClient, staffOAuthAreaCookie, staffOAuthCookieName, staffOrigin, staffService, staffSession } from "./supabase";
 import { vendorRoles, type StaffArea, type VendorRole } from "./database";
 
 type FormState = { message: string; error?: boolean };
@@ -147,10 +147,10 @@ export async function createVendorShop(_previous: FormState, form: FormData): Pr
   if (!session) return failure("Administrator access is required.");
   const name = field(form, "name");
   if (name.length < 2 || name.length > 100) return failure("Enter a shop name of 2 to 100 characters.");
-  const { error } = await session.client.from("vendor_shops").insert({ name });
+  const { data, error } = await session.client.from("vendor_shops").insert({ name }).select("id").single();
   if (error) return failure(error.code === "23505" ? "A shop with that name already exists." : "The shop could not be created.");
   revalidatePath("/admin/access");
-  return { message: "Shop created. Select it below to assign access." };
+  redirect("/admin/access?shop=" + data.id);
 }
 
 export async function saveVendorAccess(_previous: FormState, form: FormData): Promise<FormState> {
@@ -168,16 +168,42 @@ export async function saveVendorAccess(_previous: FormState, form: FormData): Pr
   return { message: `Access saved. Ask ${email} to sign in at /vendor/sign-in with this email.` };
 }
 
-export async function revokeVendorAccess(_previous: FormState, form: FormData): Promise<FormState> {
-  const session = await adminSession(true);
-  if (!session) return failure("Administrator access is required.");
+async function teamSession(area: StaffArea, shop: string) {
+  if (area === "admin") return adminSession(true);
+  if (area !== "vendor") return null;
+  const session = await staffSession(true);
+  if (!session) return null;
+  const grant = await session.client.from("vendor_access").select("role")
+    .eq("shop_id", shop).eq("email", session.email).maybeSingle();
+  return grant.data?.role === "owner" ? session : null;
+}
+
+export async function editTeamMember(area: StaffArea, operation: "add" | "change" | "revoke",
+  _previous: FormState, form: FormData): Promise<FormState> {
   const shop = field(form, "shop_id");
   const email = emailField(form);
-  if (!uuid(shop) || !email) return failure("The shop or email is invalid.");
-  const { error } = await session.client.from("vendor_access").delete().eq("shop_id", shop).eq("email", email);
-  if (error) return failure("Access could not be revoked.");
+  const previous = field(form, "previous_role");
+  const role = field(form, "role");
+  const allowed = (value: string): value is VendorRole => Object.hasOwn(vendorRoles, value) &&
+    (area === "admin" || value !== "owner");
+  if (!uuid(shop) || !email || !["add", "change", "revoke"].includes(operation) ||
+    (operation !== "add" && !allowed(previous)) || (operation !== "revoke" && !allowed(role))) {
+    return failure("Select a valid team member and role.");
+  }
+  const session = await teamSession(area, shop);
+  if (!session) return failure("You do not have permission to manage this shop.");
+  const members = session.client.from("vendor_access");
+  if (operation === "add") {
+    const { error } = await members.insert({ shop_id: shop, email, role: role as VendorRole });
+    if (error) return failure(error.code === "23505" ? "This person already has access. Use Change role below." : "Access could not be granted.");
+  } else {
+    const mutation = operation === "change" ? members.update({ role: role as VendorRole }) : members.delete();
+    const result = await mutation.eq("shop_id", shop).eq("email", email).eq("role", previous as VendorRole).select("email").maybeSingle();
+    if (result.error || !result.data) return failure("Membership may have changed. Refresh the list and try again.");
+  }
   revalidatePath("/admin/access");
-  return { message: "Vendor access revoked." };
+  revalidatePath("/vendor/dashboard");
+  return { message: operation === "revoke" ? "Access revoked." : operation === "add" ? "Team member added." : "Role updated." };
 }
 
 export async function reviewVendorApplication(_previous: FormState, form: FormData): Promise<FormState> {
