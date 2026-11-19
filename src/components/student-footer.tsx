@@ -25,6 +25,7 @@ export function StudentFooter() {
           <Link href="/orders">Track my order</Link>
           <Link href="/pickup-refunds">Pickup &amp; Refunds</Link>
           <Link href="/privacy-policy">Privacy Policy</Link>
+          <Link href="/terms-of-service">Terms of Service</Link>
         </nav>
       </div>
       <div className="footer-note">© CampusBite</div>

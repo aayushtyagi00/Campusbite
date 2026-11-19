@@ -6,7 +6,7 @@ import { liveOrderHistory } from "@/lib/commerce";
 import { LiveStudentAccount } from "@/components/live-student-account";
 
 const routes = new Set(["court", "order-online", "about", "bag", "checkout", "sign-in", "recovery", "orders", "account"]);
-const helpRoutes = ["support", "privacy-policy", "pickup-refunds"] as const;
+const helpRoutes = ["support", "privacy-policy", "terms-of-service", "pickup-refunds"] as const;
 const detail = new Set(["stalls", "products"]);
 
 export default async function Page({ params, searchParams }: {
