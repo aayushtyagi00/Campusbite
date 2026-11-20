@@ -2,7 +2,7 @@
 
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { basketLimit, pickupSlots, type CartLine, type Product } from "./campus";
+import { basketLimit, type CartLine, type Product } from "./campus";
 import { commerceDb, liveStorefronts, orderUuid } from "./commerce";
 import { findOrCreateRazorpayOrder, providerPayment, razorpay, razorpayKey, signed } from "./razorpay";
 import { liveCommerce, studentIdentity } from "./student-auth";
@@ -46,9 +46,6 @@ export async function startLiveCheckout(lines: CartLine[], start: number, note: 
     if (existing.error) throw existing.error;
     let order = existing.data;
     if (!order) {
-      const now = Date.now();
-      if (minutes !== (stall.pickupMinutes ?? 10) || start > now + 3_600_000 || !pickupSlots(stall, items, [], now + 60_000).some(candidate => candidate.start === start))
-        return { error: "Choose a new pickup window." };
       const result = await db.rpc("commerce_reserve", {
         actor: actor.id, request: requestId, signature: fingerprint, stall: stall.id,
         slot: new Date(start).toISOString(), detail, amount,

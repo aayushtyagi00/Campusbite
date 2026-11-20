@@ -16,8 +16,8 @@ export const commerceDb = () => {
 
 export const orderUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function catalogProduct({ stall_slug, sold_out, ...item }: CommerceMenuRow) {
-  return { ...item, stall: stall_slug, soldOut: sold_out };
+export function catalogProduct({ stall_slug, sold_out, stock_remaining, ...item }: CommerceMenuRow) {
+  return { ...item, stall: stall_slug, soldOut: sold_out || stock_remaining === 0 };
 }
 
 const activeStorefronts = unstable_cache(async (_project: string) => {
@@ -25,7 +25,7 @@ const activeStorefronts = unstable_cache(async (_project: string) => {
   const [storefronts, menu] = await Promise.all([
     db.from("commerce_stalls").select("slug,display_name,location,cuisine,court,photo,opens,closes,capacity,enabled,vendor_paused,closed_dates,basket_limit,weekly_hours,pickup_minutes")
       .eq("published", true).eq("standing", "approved").order("display_name"),
-    db.from("commerce_menu").select("id,stall_slug,name,category,description,price,prep,diet,photo,sold_out").eq("archived", false).order("name"),
+    db.from("commerce_menu").select("id,stall_slug,name,category,description,price,prep,diet,photo,sold_out,stock_remaining").eq("archived", false).order("name"),
   ]);
   if (storefronts.error || menu.error) throw new Error("Catalog is unavailable");
   const stalls: Stall[] = storefronts.data.map(row => ({

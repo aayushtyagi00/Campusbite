@@ -4,11 +4,12 @@ import { ArrowLeft, ArrowRight, CalendarClock, Check, Clock3, CreditCard, MapPin
 import Link from "next/link";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { clockTime, dateLabel, money, pickupSlots, slotLabel, statuses } from "@/lib/campus";
 import { acknowledgePrices, removeMissingCartItems, cartItems, clearPreviewCheckout, previewTime, updateCheckout, useClock, usePreview, visibleStatus } from "@/lib/preview";
 import { confirmLiveCheckout, startLiveCheckout, updateLiveStudentOrder } from "@/lib/commerce-actions";
 import { selectedStudentOrder, selectStudentOrder, type StudentOrder, type StudentOrderHistory } from "@/lib/student-order-types";
+import { usePickupAvailability } from "./use-pickup-availability";
 import { Quantity } from "./quantity";
 import { Back, Empty, Notice, Status } from "./ui";
 
@@ -19,11 +20,17 @@ type RazorpayCheckout = new (options: {
 }) => { open: () => void };
 const liveCheckoutKey = "campusbite.checkout.request";
 
-function liveCheckoutRequest(basket: string) {
+function savedCheckoutRequest(basket: string) {
   try {
     const saved = JSON.parse(sessionStorage.getItem(liveCheckoutKey) ?? "null");
     if (saved?.basket === basket && typeof saved.id === "string") return saved.id as string;
   } catch { /* Checkout remains usable without tab storage. */ }
+  return null;
+}
+
+function liveCheckoutRequest(basket: string) {
+  const saved = savedCheckoutRequest(basket);
+  if (saved) return saved;
   const id = crypto.randomUUID();
   try { sessionStorage.setItem(liveCheckoutKey, JSON.stringify({ basket, id })); } catch { /* Use the in-memory request. */ }
   return id;
@@ -43,17 +50,26 @@ export function Checkout({ checkout = false, history }: { checkout?: boolean; hi
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [gatewayReady, setGatewayReady] = useState(false);
-  const checkoutRequest = useRef<string | null>(null);
+  const [refresh,setRefresh] = useState(0);
+  const [resume,setResume] = useState<{basket:string;id:string} | null>(null);
   const items = cartItems(data);
   const stall = data.stalls.find(item => item.id === items[0]?.stall);
   const unavailable = items.some(item => item.soldOut || item.archived);
-  const slots = now && stall && !data.orderingPaused && !unavailable
-    ? pickupSlots(stall, items, history?.orders ?? [], live ? now + 60_000 : now, clock).filter(slot => !live || slot.start <= now + 3_600_000)
-    : [];
+  const basket = JSON.stringify({lines:data.cart,selected,note,minutes:stall?.pickupMinutes ?? 10});
+  useEffect(()=>{
+    const id = savedCheckoutRequest(basket);
+    setResume(id ? {basket,id} : null);
+  },[basket]);
+  const query = checkout && live && stall && items.length ? JSON.stringify({stall:stall.id,
+    items:items.map(item=>({id:item.id,qty:item.qty,price:item.price})),requestId:resume?.basket===basket ? resume.id : null}) : null;
+  const quote = usePickupAvailability(query,refresh);
+  const slots = live ? (quote && clock-quote.received<20000 ? quote.slots.filter(slot=>slot.start>clock) : []) :
+    now && stall && !data.orderingPaused && !unavailable ? pickupSlots(stall,items,history?.orders ?? [],now,clock) : [];
+  const chosen = slots.find(slot=>slot.start===selected);
   const pricesChanged = items.some(item => item.priceChanged);
   const missingItems = data.products.length>0 && data.cart.length > items.length;
   const unavailableNotice = missingItems && <div className="panel panel-pad stack"><Notice>An item in your bag has been removed from the menu.</Notice><button className="button secondary" onClick={()=>removeMissingCartItems(data.products)}>Remove unavailable items</button></div>;
-  const canSubmit = !missingItems && slots.some(slot => slot.start === selected) && !pricesChanged;
+  const canSubmit = !missingItems && !!chosen && !unavailable && !pricesChanged;
   const subtotal = items.reduce((sum, item) => sum + item.qty * item.price, 0);
   if (!stall || !items.length) return <div className="narrow"><h1>Your bag</h1>{unavailableNotice}<Empty title="Your bag is empty"><Link className="button" href="/">Browse stalls</Link></Empty></div>;
   function openOrder(id: string) {
@@ -78,11 +94,12 @@ export function Checkout({ checkout = false, history }: { checkout?: boolean; hi
         {checkout &&
           <section className="panel panel-pad stack">
             <h2 className="row"><CalendarClock size={22} /> Pickup window</h2>
-            <p>Choose a {stall.pickupMinutes ?? 10}-minute window. Times are shown in IST.</p>
+            <p>Choose a pickup window. Times are shown in IST.</p>
+            {live && <button className="text-link" type="button" onClick={()=>setRefresh(n=>n+1)}>Refresh availability</button>}
             {slots.length ? <fieldset className="slot-grid"><legend className="sr-only">Available pickup windows</legend>{slots.map(slot =>
-              <label className="slot-option" key={slot.start}><input type="radio" name="pickup" checked={selected === slot.start} onChange={() => { checkoutRequest.current = null; updateCheckout({ start: slot.start }); setError(""); }} />{slotLabel(slot)}</label>)}</fieldset> :
-              <p className="muted">No pickup windows available for this bag within the next hour.</p>}
-            <label className="field">Preparation note (optional)<textarea maxLength={180} value={note} onChange={event => { checkoutRequest.current = null; updateCheckout({ note: event.target.value }); }} placeholder="For example, less spicy" /></label>
+              <label className="slot-option" key={slot.start}><input type="radio" name="pickup" checked={selected === slot.start} onChange={() => { updateCheckout({ start: slot.start }); setError(""); }} />{slotLabel(slot)}</label>)}</fieldset> :
+              <p className="muted">{live && !quote ? "Checking pickup availability…" : quote?.message || "No pickup windows available for this bag within the next hour."}</p>}
+            <label className="field">Preparation note (optional)<textarea maxLength={180} value={note} onChange={event => { updateCheckout({ note: event.target.value }); }} placeholder="For example, less spicy" /></label>
           </section>}
       </div>
       <div className="transaction-column transaction-summary">
@@ -102,8 +119,10 @@ export function Checkout({ checkout = false, history }: { checkout?: boolean; hi
               setPending(true);
               setError("");
               try {
-                checkoutRequest.current ??= liveCheckoutRequest(JSON.stringify({ lines: data.cart, selected, note, minutes: stall.pickupMinutes ?? 10 }));
-                const result = await startLiveCheckout(data.cart, selected, note, checkoutRequest.current, stall.pickupMinutes ?? 10);
+                if (!chosen) return;
+                const requestId = resume?.basket===basket ? resume.id : liveCheckoutRequest(basket);
+                setResume({basket,id:requestId});
+                const result = await startLiveCheckout(data.cart, selected, note, requestId,(chosen.end-chosen.start)/60000);
                 if (result.signIn) router.push("/sign-in?returnTo=checkout");
                 else if (result.id) {
                   const id = result.id;
@@ -125,13 +144,13 @@ export function Checkout({ checkout = false, history }: { checkout?: boolean; hi
                   }
                 } else {
                   if (!result.error?.includes("same checkout")) {
-                    checkoutRequest.current = null;
+                    setResume(null);
                     clearLiveCheckoutRequest();
                   }
                   setError(result.error ?? "Try again.");
                 }
               } catch { setError("Checkout is temporarily unavailable. Please try again."); }
-              finally { setPending(false); }
+              finally { setPending(false); setRefresh(n=>n+1); }
             }}><CreditCard size={18} /> {pending ? "Opening checkout…" : `Pay · ${money(subtotal)}`}</button> :
             <Link className="button full" href="/sign-in?returnTo=checkout">Sign in to continue <ArrowRight size={17} /></Link>}
         </>}

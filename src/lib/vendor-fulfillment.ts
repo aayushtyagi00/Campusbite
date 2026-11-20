@@ -81,6 +81,9 @@ export async function writeMenuItem(shop: string, itemId: string | null, revisio
     return failure("Check the item details, price and prep time.");
   let photo = field(form,"photo");
   if (photo && !/^[\w-]+$/.test(photo) && !(photo.startsWith("menu:"+shop+"/") && /^[\da-f-]{36}\.(jpg|png|webp)$/.test(photo.split("/")[1]))) return failure("Invalid menu photo.");
+  const units = field(form,"stock");
+  if (units && (!/^\d+$/.test(units) || !Number.isSafeInteger(Number(units)) || Number(units)>1000000))
+    return failure("Enter a whole stock count between 0 and 1,000,000, or leave it blank for unlimited stock.");
   const upload = form.get("upload");
   let uploadedPath: string | undefined;
   const storage = staffService()?.storage.from("menu-photos");
@@ -99,9 +102,10 @@ export async function writeMenuItem(shop: string, itemId: string | null, revisio
     photo = "menu:"+uploadedPath;
   }
   const result = await session.client.rpc("vendor_write_item",{ target_shop:shop,item_id:itemId ?? crypto.randomUUID(),
-    expected_revision:revision,fields:{name,category,description,price,prep,diet,photo,archived:status==="archived",sold_out:status!=="available"} });
+    expected_revision:revision,fields:{name,category,description,price,prep,diet,photo,stock_remaining:units ? Number(units) : null,archived:status==="archived",sold_out:status!=="available"} });
   if (result.error) {
     if (uploadedPath && result.status >= 400 && result.status < 500) await storage?.remove([uploadedPath]);
+    if (result.error.message.includes("units held in checkout")) return failure(result.error.message);
     return failure("Could not save the item. Reload to check the latest item and your shop access.");
   }
   refreshCatalog("menu");

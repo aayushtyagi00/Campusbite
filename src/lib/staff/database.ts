@@ -69,7 +69,7 @@ export type StaffDatabase = {
       vendor_earnings: { Args: { target_shop: string; since_time: string; until_time: string }; Returns: Earnings };
       vendor_save_category: { Args: { target_shop: string; previous_name: string; new_name: string }; Returns: undefined };
       vendor_set_schedule: { Args: { target_shop: string; expected_revision: number; opening: string; closing: string; slots: number; basket: number; paused: boolean; closures: string[]; weekly: WeeklyHours; minutes: number }; Returns: undefined };
-      vendor_write_item: { Args: { target_shop: string; item_id: string; expected_revision: number; fields: Record<string,string|number|boolean> }; Returns: undefined };
+      vendor_write_item: { Args: { target_shop: string; item_id: string; expected_revision: number; fields: Record<string,string|number|boolean|null> }; Returns: undefined };
       commerce_fulfill: { Args: { order_id: string; next_status: string; submitted_code: string }; Returns: boolean };
       review_vendor_application: { Args: { application_id: string; expected_revision: number; decision: string; note: string; existing_shop?: string }; Returns: undefined };
       save_vendor_storefront: { Args: { target_shop: string; expected_revision: number; details: Record<string,string | number | boolean> }; Returns: undefined };
@@ -81,5 +81,5 @@ export type StaffDatabase = {
 
 export type CommerceMenuRow = {
   id: string; stall_slug: string; name: string; category: string;
-  description: string; price: number; prep: number; diet: string; photo: string; sold_out: boolean; archived: boolean; revision: number;
+  description: string; price: number; prep: number; diet: string; photo: string; sold_out: boolean; stock_remaining: number | null; archived: boolean; revision: number;
 };

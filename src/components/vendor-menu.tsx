@@ -11,6 +11,8 @@ function ItemForm({shop, item, options}: {shop:string; item?:CommerceMenuRow; op
       <label className="field">Category<select name="category" defaultValue={item?.category}>{options.map(c=><option key={c}>{c}</option>)}</select></label>
       <label className="field">Price (₹)<input name="price" type="number" min="1" max="10000" step=".01" defaultValue={item && item.price/100} required /></label>
       <label className="field">Preparation time (minutes)<input name="prep" type="number" min="1" max="50" defaultValue={item?.prep} required /></label>
+      <label className="field">Stock remaining<input name="stock" type="number" min="0" max="1000000" step="1" defaultValue={item?.stock_remaining ?? ""} placeholder="Unlimited" />
+        <small>Includes units held in unpaid checkouts. Paid units are deducted automatically.</small></label>
       <label className="field">Dietary label<input name="diet" maxLength={80} defaultValue={item?.diet} required /></label>
       <label className="field">Availability<select name="status" defaultValue={item?.archived ? "archived" : item?.sold_out ? "sold_out" : "available"}>
         <option value="available">Available</option><option value="sold_out">Sold out</option><option value="archived">Archived</option></select></label>
@@ -33,6 +35,6 @@ export function VendorMenu({shop, items, options}: {shop:string; items:CommerceM
     <summary><strong>Add a menu item</strong></summary><ItemForm options={options} shop={shop} /></details>
     {items.map(item=><details className="panel panel-pad ops-details" key={item.id}>
       <summary><Photo name={item.photo} className="vendor-thumb" /><strong>{item.name}</strong><span>{money(item.price)}</span>
-        <Status>{item.archived ? "Archived" : item.sold_out ? "Sold out" : "Available"}</Status></summary>
+        {item.stock_remaining != null && <span>{item.stock_remaining} in stock</span>}<Status>{item.archived ? "Archived" : (item.sold_out || item.stock_remaining === 0) ? "Sold out" : "Available"}</Status></summary>
       <ItemForm options={options} key={item.revision} shop={shop} item={item} /></details>)}</div>;
 }

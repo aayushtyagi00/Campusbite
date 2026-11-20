@@ -66,6 +66,12 @@ After the vendor workspace migration, apply [menu categories and weekly pickup](
 
 Owners and managers can create or rename a category under **Menu editor → Manage categories**. Under **Availability**, each weekday can use regular hours, custom hours or a recurring closure. Date-specific closures take precedence. Window length is measured in whole minutes from 1 to 60. Windows start at the day's opening time in IST and must finish by closing.
 
+### Roll out pickup availability and inventory
+
+Apply [pickup availability and inventory](supabase/migrations/202611200003_pickup_availability_inventory.sql) after the weekly schedules migration, then deploy the app. Existing menu items default to unlimited stock. In **Vendor → Menu editor**, enter the number of unsold units on hand to enable tracking. That total includes units held by unpaid checkouts.
+
+Checkout refreshes availability every ten seconds while visible. A reservation holds overlapping window capacity and tracked units until its payment deadline. Capture deducts tracked units once. Cancellation, rejection or an expired acceptance deadline releases the paid allocation. For a payment arriving after its hold expires, the database checks the original pickup window, current inventory and preparation time. If it cannot fulfill that window, it requests a full refund through the existing refund worker.
+
 ### Local checks
 
 ```sh
@@ -120,7 +126,7 @@ Before connecting live commerce, verify email delivery and role checks against y
 
 ### Peak-time testing
 
-The database takes a transaction lock per shop and pickup window to enforce capacity during a rush. Duplicate requests reuse the same reservation, abandoned holds expire, and a capture arriving after the hold deadline goes to the refund queue. Public catalog reads are cached and authenticated order reads use indexes. The active vendor board refreshes only while visible.
+The database takes a transaction lock per shop and pickup window to enforce capacity during a rush. Duplicate requests reuse the same reservation, abandoned holds expire, and a capture arriving after the hold deadline gets a feasibility check for its original window. Public catalog reads are cached and authenticated order reads use indexes. The active vendor board refreshes only while visible.
 
 Run the reservation burst below against a **dedicated staging Supabase project** and an enabled test storefront. It reserves synthetic orders in a free pickup window, reports stored orders, successful reservations, full-window responses, unexpected error rate, throughput and median/p95 reservation latency, and fails if the database accepts more than the configured capacity. It creates no gateway payments. Test holds expire automatically.
 

@@ -30,6 +30,9 @@ test("vendor staff can refresh and act on a shop order, and managers can edit th
     items:[{name:"Mint wrap",qty:1,price:6200}],preparation_note:"Less chilli",accept_until:new Date(Date.now()+90000).toISOString(),
     prep_minutes:8,amount_paise:6200,rejection_reason:"",refund:"None",events:[{status:"Payment captured",at:Date.now()}]};
   const menu:Record<string,unknown>[]=[];
+  const availableStart = Math.ceil((Date.now()+30*60000)/60000)*60000;
+  let availableSlots = [{start:availableStart,end:availableStart+15*60000}];
+  let availabilityDown = false;
   let incoming:typeof order|undefined;
   let notify:()=>void = ()=>{};
   let subscription:Record<string,string>|undefined;
@@ -46,6 +49,10 @@ test("vendor staff can refresh and act on a shop order, and managers can edit th
       case "/rest/v1/commerce_stalls": return rows([store]);
       case "/rest/v1/commerce_menu": return rows(menu);
       case "/rest/v1/vendor_sales": return rows([]);
+      case "/rest/v1/rpc/commerce_pickup_availability":
+        if (availabilityDown) return res.writeHead(503).end("{}");
+        if (body.stall!=="test-shop" || body.items?.[0]?.qty!==1 || body.items?.[0]?.price!==3000) return res.writeHead(400).end("{}");
+        return res.end(JSON.stringify({slots:availableSlots,message:availableSlots.length ? null : "There is not enough stock for this bag"}));
       case "/rest/v1/rpc/vendor_order_feed":
         if(blocked) return res.writeHead(503).end('{"message":"temporary outage"}');
         return rows(body.selected_order ? [order] : [order,...(incoming ? [incoming] : [])]);
@@ -119,6 +126,7 @@ test("vendor staff can refresh and act on a shop order, and managers can edit th
     await page.getByRole("button",{name:"Create category"}).click();
     await page.getByRole("combobox",{name:"Category",exact:true}).selectOption("Tea blends");
     await page.getByLabel("Item name").fill("Mint tea");
+    await page.getByLabel(/Stock remaining/).fill("3");
     await page.getByLabel("Price (₹)").fill("30");
     await page.getByLabel("Preparation time (minutes)").fill("4");
     await page.getByLabel("Dietary label").fill("Vegetarian");
@@ -145,6 +153,11 @@ test("vendor staff can refresh and act on a shop order, and managers can edit th
     await expect(page.getByText("Pending refunds",{exact:true})).toBeVisible();
     await page.getByRole("link",{name:"Last 30 days"}).click();
     await expect(page).toHaveURL(/period=30/);
+    await page.getByRole("link",{name:"Availability"}).click();
+    await page.getByLabel("Pause new orders").uncheck();
+    await page.getByRole("button",{name:"Save availability"}).click();
+    await expect(page.getByText("Availability saved.")).toBeVisible();
+    expect(menu[0].stock_remaining).toBe(3);
     await page.goto("/stalls/test-shop");
     await expect(page.getByRole("heading",{name:"House teas"})).toBeVisible();
     await page.getByText("Weekly hours (IST)").click();
@@ -153,6 +166,23 @@ test("vendor staff can refresh and act on a shop order, and managers can edit th
     await page.goto("/order-online");
     await page.getByRole("button",{name:"House teas",exact:true}).click();
     await expect(page.getByRole("heading",{name:"Campus Kitchen"}).first()).toBeVisible();
+    await page.goto("/stalls/test-shop");
+    await page.getByRole("button",{name:"Add Mint tea"}).click();
+    await page.goto("/checkout");
+    const choices=page.getByRole("radio");
+    await expect(choices).toHaveCount(1);
+    await choices.first().check();
+    availableSlots=[];
+    await page.getByRole("button",{name:"Refresh availability"}).click();
+    await expect(choices).toHaveCount(0);
+    await expect(page.getByText("There is not enough stock for this bag")).toBeVisible();
+    availabilityDown=true;
+    await page.getByRole("button",{name:"Refresh availability"}).click();
+    await expect(page.getByText(/Could not check pickup availability/)).toBeVisible();
+    availableSlots=[{start:availableStart,end:availableStart+15*60000}];
+    availabilityDown=false;
+    await page.getByRole("button",{name:"Refresh availability"}).click();
+    await expect(choices).toHaveCount(1);
     role="staff";
     await page.goto("/vendor/board?shop="+shop);
     await expect(page.getByRole("link",{name:"Earnings"})).toHaveCount(0);
