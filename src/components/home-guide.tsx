@@ -5,7 +5,7 @@ import { Photo } from "./ui";
 
 const pickupSteps = [
   { icon: Store, title: "Choose a vendor", description: "Select a food court and find a dish from one of its cafés or stalls." },
-  { icon: CalendarClock, title: "Pick a time", description: "Add your food to the bag and select an available 10-minute pickup window at checkout." },
+  { icon: CalendarClock, title: "Pick a time", description: "Add your food to the bag and select an available pickup window at checkout." },
   { icon: ShoppingBag, title: "Collect at the stall", description: "Check My Orders and show your six-digit pickup code when your order is ready." },
 ];
 

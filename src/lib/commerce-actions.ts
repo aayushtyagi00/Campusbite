@@ -9,7 +9,7 @@ import { liveCommerce, studentIdentity } from "./student-auth";
 
 type Result = { id?: string; error?: string; signIn?: boolean; gateway?: { order: string; key: string; amount: number } };
 
-export async function startLiveCheckout(lines: CartLine[], start: number, note: string, requestId: string): Promise<Result> {
+export async function startLiveCheckout(lines: CartLine[], start: number, note: string, requestId: string, minutes = 10): Promise<Result> {
   if (!liveCommerce()) return { error: "Live checkout is disabled." };
   const key = razorpayKey();
   if (!key || !process.env.RAZORPAY_KEY_SECRET || !process.env.RAZORPAY_WEBHOOK_SECRET || !process.env.COMMERCE_JOB_SECRET) {
@@ -18,7 +18,7 @@ export async function startLiveCheckout(lines: CartLine[], start: number, note: 
   const actor = await studentIdentity(true);
   if (!actor) return { signIn: true };
   if (!Array.isArray(lines) || lines.length < 1 || lines.length > basketLimit || !orderUuid.test(requestId) ||
-      !Number.isSafeInteger(start) || typeof note !== "string" || note.length > 180) return { error: "Review your bag and pickup window." };
+      !Number.isInteger(minutes) || minutes < 1 || minutes > 60 || !Number.isSafeInteger(start) || typeof note !== "string" || note.length > 180) return { error: "Review your bag and pickup window." };
   const { stalls, products } = await liveStorefronts();
   const seen = new Set<string>();
   const items: (Product & { qty: number })[] = [];
@@ -36,7 +36,7 @@ export async function startLiveCheckout(lines: CartLine[], start: number, note: 
   if (stall.basketLimit && items.reduce((sum,item)=>sum+item.qty,0)>stall.basketLimit)
     return { error: `Choose up to ${stall.basketLimit} items for this stall.` };
   const amount = items.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const detail = { stall: stall.id, name: stall.name, location: stall.location, note: note.trim(),
+  const detail = { ...(minutes === 10 ? {} : {pickup_minutes:minutes}), stall: stall.id, name: stall.name, location: stall.location, note: note.trim(),
     items: items.map(({ id, name, price, qty }) => ({ id, name, price, qty })) };
   try {
     const db = commerceDb();
@@ -47,7 +47,7 @@ export async function startLiveCheckout(lines: CartLine[], start: number, note: 
     let order = existing.data;
     if (!order) {
       const now = Date.now();
-      if (start > now + 3_600_000 || !pickupSlots(stall, items, [], now + 60_000).some(candidate => candidate.start === start))
+      if (minutes !== (stall.pickupMinutes ?? 10) || start > now + 3_600_000 || !pickupSlots(stall, items, [], now + 60_000).some(candidate => candidate.start === start))
         return { error: "Choose a new pickup window." };
       const result = await db.rpc("commerce_reserve", {
         actor: actor.id, request: requestId, signature: fingerprint, stall: stall.id,

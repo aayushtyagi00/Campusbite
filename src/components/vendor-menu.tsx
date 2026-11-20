@@ -1,14 +1,14 @@
-import { writeMenuItem } from "@/lib/vendor-fulfillment";
+import { saveCategory, writeMenuItem } from "@/lib/vendor-fulfillment";
 import type { CommerceMenuRow } from "@/lib/staff/database";
 import { money } from "@/lib/campus";
 import { StaffForm } from "./staff-forms";
 import { Photo, Status } from "./ui";
 
-function ItemForm({shop, item}: {shop:string; item?:CommerceMenuRow}) {
+function ItemForm({shop, item, options}: {shop:string; item?:CommerceMenuRow; options:string[]}) {
   return <StaffForm action={writeMenuItem.bind(null,shop,item?.id ?? null,item?.revision ?? -1)} label={item ? "Save item" : "Create item"}>
     <div className="form-grid">
       <label className="field">Item name<input name="name" defaultValue={item?.name} maxLength={100} required /></label>
-      <label className="field">Category<select name="category" defaultValue={item?.category}>{["Meals","Wraps","Drinks","Snacks"].map(c=><option key={c}>{c}</option>)}</select></label>
+      <label className="field">Category<select name="category" defaultValue={item?.category}>{options.map(c=><option key={c}>{c}</option>)}</select></label>
       <label className="field">Price (₹)<input name="price" type="number" min="1" max="10000" step=".01" defaultValue={item && item.price/100} required /></label>
       <label className="field">Preparation time (minutes)<input name="prep" type="number" min="1" max="50" defaultValue={item?.prep} required /></label>
       <label className="field">Dietary label<input name="diet" maxLength={80} defaultValue={item?.diet} required /></label>
@@ -20,11 +20,19 @@ function ItemForm({shop, item}: {shop:string; item?:CommerceMenuRow}) {
     <label className="field">Item photo (optional, up to 3 MB)<input name="upload" type="file" accept="image/jpeg,image/png,image/webp" /></label>
   </StaffForm>;
 }
-export function VendorMenu({shop, items}: {shop:string; items:CommerceMenuRow[]}) {
-  return <div className="stack"><details className="panel panel-pad ops-details" open={!items.length}>
-    <summary><strong>Add a menu item</strong></summary><ItemForm shop={shop} /></details>
+export function VendorMenu({shop, items, options}: {shop:string; items:CommerceMenuRow[]; options:string[]}) {
+  return <div className="stack"><details className="panel panel-pad ops-details">
+    <summary><strong>Manage categories</strong></summary>
+    <StaffForm action={saveCategory.bind(null,shop,"")} label="Create category">
+      <label className="field">New category name<input name="name" maxLength={60} required /></label>
+    </StaffForm>
+    {options.map(name => <StaffForm key={name} action={saveCategory.bind(null,shop,name)} label={"Rename "+name}>
+      <label className="field">{name} category name<input name="name" defaultValue={name} maxLength={60} required /></label>
+    </StaffForm>)}
+    </details><details className="panel panel-pad ops-details" open={!items.length}>
+    <summary><strong>Add a menu item</strong></summary><ItemForm options={options} shop={shop} /></details>
     {items.map(item=><details className="panel panel-pad ops-details" key={item.id}>
       <summary><Photo name={item.photo} className="vendor-thumb" /><strong>{item.name}</strong><span>{money(item.price)}</span>
         <Status>{item.archived ? "Archived" : item.sold_out ? "Sold out" : "Available"}</Status></summary>
-      <ItemForm key={item.revision} shop={shop} item={item} /></details>)}</div>;
+      <ItemForm options={options} key={item.revision} shop={shop} item={item} /></details>)}</div>;
 }

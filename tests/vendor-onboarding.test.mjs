@@ -111,10 +111,53 @@ test("historical applications and storefronts migrate, and a fourth shop can pub
   assert.equal("pickup_code" in rejected,false);
   assert.deepEqual((await vendorQuery("select vendor_earnings($1,now()-interval '1 hour',now()+interval '1 hour') as totals",[shop])).rows[0].totals,
     {captured:2400,orders:1,refunded:0,refund_pending:2400});
+  await migrate("202611200002_menu_categories_weekly_pickup");
+  const category = (previous,name) => vendorQuery("select vendor_save_category($1,$2,$3)",[shop,previous,name]);
+  const schedule = (revision,weekly,minutes) => vendorQuery("select vendor_set_schedule($1,$2,'09:00','16:00',3,2,false,array['2027-02-11'::date],$3,$4)",[shop,revision,weekly,minutes]);
+  assert.equal((await feed())[0].pickup_minutes,10);
+  await category("","Iced drinks");
+  await writeItem(3,{category:"Iced drinks"});
+  await category("Iced drinks","Coolers");
+  const renamed = (await db.query("select category,revision from commerce_menu where id='cold-tea'")).rows[0];
+  assert.equal(renamed.category,"Coolers");
+  await assert.rejects(category("","coolers"),/already exists/);
+  await assert.rejects(writeItem(renamed.revision,{category:"Iced drinks"}),/category/);
+  await assert.rejects(schedule(7,{Monday:{opens:"17:00",closes:"09:00"}},15),/weekday/);
+  await schedule(7,{Saturday:{opens:"10:05",closes:"12:00"},Sunday:null},15);
+  const insertWindow = (date,minutes) => db.query(`insert into commerce_orders(student_id,request_id,fingerprint,shop_id,pickup_at,reserved_until,detail,amount_paise)
+    values(gen_random_uuid(),gen_random_uuid(),'window',$1,$2,now()+interval '1 hour',$3,2400) returning pickup_minutes`,
+    [shop,date,{pickup_minutes:minutes,items:[{id:"cold-tea",qty:1,price:2400}]}]);
+  assert.equal((await insertWindow("2027-02-13T10:20+05:30",15)).rows[0].pickup_minutes,15);
+  await assert.rejects(insertWindow("2027-02-13T10:15+05:30",15),/window changed/);
+  await assert.rejects(insertWindow("2027-02-13T10:20+05:30",10),/window changed/);
+  await assert.rejects(insertWindow("2027-02-13T11:50+05:30",15),/closed/);
+  await assert.rejects(insertWindow("2027-02-14T11:00+05:30",15),/closed/);
+  await assert.rejects(insertWindow("2027-02-11T11:00+05:30",15),/closed/);
+  assert.equal((await insertWindow("2027-02-12T09:00+05:30",15)).rows[0].pickup_minutes,15);
+  assert.equal((await feed())[0].pickup_minutes,10);
+  // Exercise the checkout RPC with an actual future reservation and change the
+  // grid while its payment hold is active. The two windows overlap by 5 minutes.
+  const minute = 60000;
+  let slot = Math.ceil((Date.now()+20*minute)/minute)*minute;
+  const localMinute = Math.floor((slot+330*minute)/minute)%1440;
+  if (localMinute>1410) slot += (1440-localMinute)*minute;
+  const configure = async (opens,minutes) => db.query(`update commerce_stalls set weekly_hours='{}',closed_dates='{}',
+    opens=($2::timestamptz at time zone 'Asia/Kolkata')::time,closes='23:59',capacity=1,pickup_minutes=$3 where shop_id=$1`,
+    [shop,new Date(opens).toISOString(),minutes]);
+  const reserve = (start,minutes) => db.query(`select (commerce_reserve(gen_random_uuid(),gen_random_uuid(),'test','fourth-kitchen',$1,$2,2400)).pickup_minutes as duration`,
+    [new Date(start).toISOString(),{pickup_minutes:minutes,note:"",items:[{id:"cold-tea",name:"Cold tea",qty:1,price:2400}]}]);
+  await configure(slot,10);
+  assert.equal((await reserve(slot,10)).rows[0].duration,10);
+  await configure(slot+5*minute,15);
+  await assert.rejects(reserve(slot+5*minute,15),/full/);
+  // If the grid was moved past midnight, the horizon may end before the next slot.
+  if (slot+20*minute<Date.now()+60*minute) assert.equal((await reserve(slot+20*minute,15)).rows[0].duration,15);
   const other = (await db.query("select id from vendor_shops where id<>$1 limit 1",[shop])).rows[0].id;
   await assert.rejects(vendorQuery("select vendor_order_feed($1)",[other]));
   await db.query("update vendor_access set role='staff' where shop_id=$1",[shop]);
   assert.equal((await feed())[0].status,"rejected");
+  await assert.rejects(category("","Staff category"));
+  await assert.rejects(schedule(8,{},20));
   await assert.rejects(writeItem(3),/management/);
   await assert.rejects(availability(7,true),/management/);
   await assert.rejects(vendorQuery("select vendor_earnings($1,now(),now())",[shop]));

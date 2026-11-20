@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { clockTime, dateLabel, money } from "@/lib/campus";
+import { WeekdayHours } from "./weekday-hours";
+import { weekdays, clockTime, dateLabel, money } from "@/lib/campus";
 import { applicationStatuses, type Storefront } from "@/lib/staff/database";
 import type { staffSession } from "@/lib/staff/supabase";
 import { saveAvailability } from "@/lib/vendor-fulfillment";
@@ -11,14 +12,17 @@ type Client = NonNullable<Awaited<ReturnType<typeof staffSession>>>["client"];
 
 export function Availability({shop,store}:{shop:string;store:Storefront}) {
   return <section className="panel panel-pad stack ops-form">
-    <h2>Hours and pickup limits</h2><p>Opening and closing times apply daily in campus time (IST). The final pickup window must finish by closing.</p>
+    <h2>Hours and pickup limits</h2><p>Set regular hours in campus time (IST), then choose any weekday exceptions. Pickup windows start at opening and finish by closing.</p>
     <StaffForm action={saveAvailability.bind(null,shop,store.revision)} label="Save availability">
       <div className="form-grid">
         <label className="field">Opens at<input type="time" name="opening" required defaultValue={store.opens?.slice(0,5)} /></label>
         <label className="field">Closes at<input type="time" name="closing" required defaultValue={store.closes?.slice(0,5)} /></label>
-        <label className="field">Orders per 10-minute window<input type="number" name="slots" min="1" max="100" required defaultValue={store.capacity} /></label>
+        <label className="field">Orders per pickup window<input type="number" name="slots" min="1" max="100" required defaultValue={store.capacity} /></label>
+        <label className="field">Pickup window (minutes)<input name="minutes" type="number" min="1" max="60" required defaultValue={store.pickup_minutes ?? 10} /></label>
         <label className="field">Maximum items per order<input name="basket" type="number" min="1" max="8" required defaultValue={store.basket_limit} /></label>
       </div>
+      <section className="stack"><h3>Weekly schedule</h3>{weekdays.map(day => <WeekdayHours key={day} day={day} hours={store.weekly_hours?.[day]}
+        regular={{opens:store.opens?.slice(0,5) ?? "",closes:store.closes?.slice(0,5) ?? ""}} />)}</section>
       <label className="field">Closure dates<textarea name="closures" placeholder="YYYY-MM-DD, YYYY-MM-DD" defaultValue={store.closed_dates.join(", ")} /></label>
       <label className="row"><input type="checkbox" name="paused" defaultChecked={store.vendor_paused} /> Pause new orders</label>
       <p className="fineprint">You can still fulfill paid orders while the shop is paused.</p>
@@ -39,7 +43,7 @@ export async function WorkspaceOnboarding({client,shop,store}:{client:Client;sho
       <dt>Platform standing</dt><dd>{store ? applicationStatuses[store.standing] : "Awaiting storefront setup"}</dd>
       <dt>Payment onboarding</dt><dd>{payment[store?.payment_status ?? "not_started"]}</dd>
       <dt>Published storefront</dt><dd>{store?.published ? <Link className="text-link" href={"/stalls/"+store.slug}>Open storefront</Link> : "Unpublished"}</dd>
-      <dt>Available menu items</dt><dd>{menu?.count ?? 0}</dd><dt>Daily hours (IST)</dt><dd>{store?.opens && store.closes ? store.opens.slice(0,5)+" – "+store.closes.slice(0,5) : "Awaiting hours"}</dd>
+      <dt>Available menu items</dt><dd>{menu?.count ?? 0}</dd><dt>Regular hours (IST)</dt><dd>{store?.opens && store.closes ? store.opens.slice(0,5)+" – "+store.closes.slice(0,5) : "Awaiting hours"}</dd>
       <dt>New paid orders</dt><dd>{store?.vendor_paused ? "Paused by vendor" : store?.enabled ? "Enabled during open hours" : "Disabled"}</dd>
     </dl><Link className="text-link" href="/vendor/onboarding">Open applicant portal</Link>
   </section>;

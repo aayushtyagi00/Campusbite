@@ -104,7 +104,7 @@ export function OrderBoard({shop,selected,initial,serverTime,live}: {shop:string
     return <article className="panel board-card stack" key={order.id}>
       <div className="row between"><strong>{selected ? order.reference : <Link className="text-link" href={"/vendor/orders/"+order.id+"?shop="+shop}>{order.reference}</Link>}</strong>
         {(selected || !active.has(order.status)) && <Status>{statuses[order.status]}</Status>}</div>
-      <p><strong>Pickup</strong> · {dateLabel(start)} · {slotLabel({start,end:start+600000})} IST</p>
+      <p><strong>Pickup</strong> · {dateLabel(start)} · {slotLabel({start,end:start+(order.pickup_minutes ?? 10)*60000})} IST</p>
       {order.status==="awaiting" && order.accept_until && <p className={"vendor-deadline"+(seconds<=20 ? " urgent" : "")}>{seconds ? "Accept within "+seconds+"s" : "Acceptance window ended"}</p>}
       {order.prep_minutes !== null && <p>Prep · {order.prep_minutes} min · Start by <strong>{clockTime(start-(order.prep_minutes+2)*60000)}</strong></p>}
       <ul>{(order.items ?? []).map((item,i)=><li key={i}>{item.qty} × {item.name}{selected && item.price!=null && " · "+money(item.price*item.qty)}</li>)}</ul>

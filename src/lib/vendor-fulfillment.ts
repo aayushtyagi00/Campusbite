@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
+import { weekdays, type WeeklyHours } from "./campus";
 import { staffSession, staffService } from "./staff/supabase";
 import { orderUuid } from "./commerce";
 
@@ -37,11 +38,35 @@ export async function saveAvailability(shop: string, revision: number, _: FormSt
   if (closures.length > 90 || closures.some(day => !/^\d{4}-\d{2}-\d{2}$/.test(day) ||
     !Number.isFinite(Date.parse(day)) || new Date(day).toISOString().slice(0,10) !== day))
     return failure("Use up to 90 closure dates in YYYY-MM-DD format.");
-  const result = await session.client.rpc("vendor_set_availability", { target_shop: shop, expected_revision: revision,
-    opening, closing, slots, basket, closures, paused: form.has("paused") });
+  const minutes = Number(field(form,"minutes"));
+  if (!Number.isInteger(minutes) || minutes<1 || minutes>60) return failure("Choose a pickup window between 1 and 60 minutes.");
+  const weekly: WeeklyHours = {};
+  const validTime = /^([01]\d|2[0-3]):[0-5]\d$/;
+  for (const day of weekdays) {
+    const mode = field(form,day);
+    if (mode === "regular") continue;
+    if (mode === "closed") { weekly[day] = null; continue; }
+    const opens = field(form,day+"-opens"), closes = field(form,day+"-closes");
+    if (mode !== "custom" || !validTime.test(opens) || !validTime.test(closes) || opens >= closes)
+      return failure("Check the opening and closing times for "+day+".");
+    weekly[day] = {opens,closes};
+  }
+  const result = await session.client.rpc("vendor_set_schedule", { target_shop: shop, expected_revision: revision,
+    opening, closing, slots, basket, closures, weekly, minutes, paused: form.has("paused") });
   if (result.error) return failure("Could not save availability. Reload to check the latest settings and your shop access.");
   refreshCatalog("availability");
   return { message: "Availability saved." };
+}
+
+export async function saveCategory(shop: string, previous: string, _: FormState, form: FormData) {
+  const session = await staffSession(true);
+  if (!session) return failure("Sign in again.");
+  const name = field(form,"name");
+  if (!name || name.length>60 || name.toLowerCase()==="all") return failure("Choose a name of 1–60 characters other than All.");
+  const {error} = await session.client.rpc("vendor_save_category",{target_shop:shop,previous_name:previous,new_name:name});
+  if (error) return failure(error.code==="P0001" ? error.message : "Could not save this category. Check your shop access.");
+  refreshCatalog("menu");
+  return {message:previous ? "Category renamed." : "Category created."};
 }
 
 export async function writeMenuItem(shop: string, itemId: string | null, revision: number, _: FormState, form: FormData) {
@@ -52,7 +77,7 @@ export async function writeMenuItem(shop: string, itemId: string | null, revisio
   const category = field(form,"category"), status = field(form,"status");
   if (!name || name.length>100 || !description || description.length>500 || !diet || diet.length>80 ||
       !/^\d+(\.\d{1,2})?$/.test(priceText) || price<100 || price>1000000 || !Number.isInteger(prep) || prep<1 || prep>50 ||
-      !["Meals","Wraps","Drinks","Snacks"].includes(category) || !["available","sold_out","archived"].includes(status))
+      !category || category.length>60 || !["available","sold_out","archived"].includes(status))
     return failure("Check the item details, price and prep time.");
   let photo = field(form,"photo");
   if (photo && !/^[\w-]+$/.test(photo) && !(photo.startsWith("menu:"+shop+"/") && /^[\da-f-]{36}\.(jpg|png|webp)$/.test(photo.split("/")[1]))) return failure("Invalid menu photo.");

@@ -334,6 +334,9 @@ svg { flex-shrink: 0; }
 .lane h2 span { border-radius: 50px; padding: .13rem .45rem; background: white; font-size: .75rem; }
 .lane-empty { padding: .8rem .45rem; border: 1px dashed var(--border); border-radius: 9px; text-align: center; font-size: .81rem; }
 .board-card { padding: .65rem; font-size: .84rem; gap: .5rem; }
+.weekday-hours { padding:.55rem .75rem; border:1px solid var(--border); border-radius:8px; }
+.weekday-hours legend { font-weight:650; padding-inline:.25rem; }
+.weekday-hours .form-grid { margin-top:.5rem; }
 .vendor-toolbar { display:flex; flex-wrap:wrap; align-items:center; padding:.85rem 1rem; gap:.65rem; }
 .vendor-toolbar > div { margin-inline-end:auto; }
 .vendor-toolbar .fineprint { margin-top:.2rem; }

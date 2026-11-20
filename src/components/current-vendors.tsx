@@ -83,13 +83,13 @@ export async function VendorRecord({ client, id }: { client: Client; id: string 
       <div><dt>Application</dt><dd>{a ? <Link href={"/admin/applications/" + a.id}>{applicationStatuses[a.status]} · View record</Link> : "Manually created shop"}</dd></div>
       <div><dt>Payment onboarding</dt><dd>{payments[s?.payment_status ?? "not_started"]}</dd></div>
       <div><dt>Menu</dt><dd>{menu?.error ? "Unavailable" : (menu?.count ?? 0) + " items"}</dd></div>
-      <div><dt>Hours (IST)</dt><dd>{s?.opens && s.closes ? s.opens.slice(0, 5) + " – " + s.closes.slice(0, 5) : "Awaiting setup"}</dd></div>
+      <div><dt>Regular hours (IST)</dt><dd>{s?.opens && s.closes ? s.opens.slice(0, 5) + " – " + s.closes.slice(0, 5) : "Awaiting setup"}</dd></div>
     </dl>{s?.published && s.standing === "approved" && <Link href={"/stalls/" + s.slug}>Open public storefront</Link>}</section>
     <ProfileForm key={s?.revision ?? "new"} shop={shop.data} listing={s} application={a} unlinked={available.data.map(r => r.slug)} />
     {s && <details className="panel panel-pad"><summary>Add a menu item</summary>
       <StaffForm action={addOnboardingItem.bind(null, id, randomUUID())} label="Add item">
         <label className="field">Item name<input name="name" required maxLength={100} /></label>
-        <label className="field">Category<select name="category">{categories.map(c => <option key={c}>{c}</option>)}</select></label>
+        <label className="field">Category<select name="category">{(s.menu_categories ?? categories).map(c => <option key={c}>{c}</option>)}</select></label>
         <label className="field">Description<input name="description" required maxLength={500} /></label>
         <label className="field">Dietary label<input name="diet" required maxLength={80} /></label>
         <div className="form-grid"><label className="field">Price in rupees<input name="price" type="number" min={1} max={10000} step=".01" required /></label>

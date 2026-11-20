@@ -1,3 +1,5 @@
+import type { WeeklyHours } from "../campus";
+
 export const vendorRoles = {
   owner: "Owner",
   manager: "Manager",
@@ -24,6 +26,7 @@ export type Storefront = {
   photo: string; opens: string | null; closes: string | null; capacity: number; published: boolean; enabled: boolean;
   standing: "approved" | "suspended"; payment_status: "not_started" | "pending" | "verified" | "legacy_enabled";
   provider_ref: string; revision: number; vendor_paused: boolean; closed_dates: string[]; basket_limit: number;
+  menu_categories: string[]; weekly_hours: WeeklyHours; pickup_minutes: number;
 };
 export type VendorOrder = {
   id: string; shop_id: string; reference: string;
@@ -33,7 +36,7 @@ export type VendorOrder = {
   preparation_note?: string;
 };
 export type BoardOrder = VendorOrder & {
-  accept_until: string | null; prep_minutes: number | null; amount_paise: number | null;
+  pickup_minutes: number; accept_until: string | null; prep_minutes: number | null; amount_paise: number | null;
   rejection_reason: string | null; refund: string | null; events: { status: string; at: number }[];
 };
 export type Earnings = { captured: number; orders: number; refunded: number; refund_pending: number };
@@ -64,7 +67,8 @@ export type StaffDatabase = {
       vendor_order_feed: { Args: { target_shop: string; selected_order?: string }; Returns: BoardOrder[] };
       vendor_reject_order: { Args: { order_id: string; reason: string }; Returns: boolean };
       vendor_earnings: { Args: { target_shop: string; since_time: string; until_time: string }; Returns: Earnings };
-      vendor_set_availability: { Args: { target_shop: string; expected_revision: number; opening: string; closing: string; slots: number; basket: number; paused: boolean; closures: string[] }; Returns: undefined };
+      vendor_save_category: { Args: { target_shop: string; previous_name: string; new_name: string }; Returns: undefined };
+      vendor_set_schedule: { Args: { target_shop: string; expected_revision: number; opening: string; closing: string; slots: number; basket: number; paused: boolean; closures: string[]; weekly: WeeklyHours; minutes: number }; Returns: undefined };
       vendor_write_item: { Args: { target_shop: string; item_id: string; expected_revision: number; fields: Record<string,string|number|boolean> }; Returns: undefined };
       commerce_fulfill: { Args: { order_id: string; next_status: string; submitted_code: string }; Returns: boolean };
       review_vendor_application: { Args: { application_id: string; expected_revision: number; decision: string; note: string; existing_shop?: string }; Returns: undefined };
@@ -76,6 +80,6 @@ export type StaffDatabase = {
 };
 
 export type CommerceMenuRow = {
-  id: string; stall_slug: string; name: string; category: "Meals" | "Wraps" | "Drinks" | "Snacks";
+  id: string; stall_slug: string; name: string; category: string;
   description: string; price: number; prep: number; diet: string; photo: string; sold_out: boolean; archived: boolean; revision: number;
 };

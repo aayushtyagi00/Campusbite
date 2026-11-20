@@ -60,6 +60,12 @@ Use numeric code email templates for password recovery and staff password setup.
 3. Sign in at `/vendor/sign-in` with an assigned shop account. On **Order board**, enable order alerts and use **Test sound** on the stall device. **Live updates** appears after the subscription connects. **Connected · polling** means the board is fetching the current queue every ten seconds while visible. Check the `supabase_realtime` publication includes `public.vendor_orders` if the board stays in polling mode.
 4. In staging, place a paid test order and check the deadline, preparation estimate, rejection reason, refund request, and student order details. Use a second test order to check acceptance through collection. Confirm staff can fulfill orders and only owners and managers can open the management pages.
 
+### Roll out shop categories and weekly schedules
+
+After the vendor workspace migration, apply [menu categories and weekly pickup](supabase/migrations/202611200002_menu_categories_weekly_pickup.sql) before deploying the matching app. Existing shops start with their four menu categories, regular hours and ten-minute windows. Existing orders keep their original pickup duration.
+
+Owners and managers can create or rename a category under **Menu editor → Manage categories**. Under **Availability**, each weekday can use regular hours, custom hours or a recurring closure. Date-specific closures take precedence. Window length is measured in whole minutes from 1 to 60. Windows start at the day's opening time in IST and must finish by closing.
+
 ### Local checks
 
 ```sh

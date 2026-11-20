@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { categories, foodCourts, type Category } from "./campus";
+import { foodCourts } from "./campus";
 import { orderUuid } from "./commerce";
 import { adminSession, allowAttempt } from "./staff/access";
 import { staffService } from "./staff/supabase";
@@ -132,10 +132,10 @@ export async function addOnboardingItem(shop: string, id: string, _state: Feedba
   const session = await adminSession(true);
   if (!session || !orderUuid.test(shop) || !orderUuid.test(id)) return fail("Administrator access required.");
   const name = field(form, "name"), description = field(form, "description"), diet = field(form, "diet");
-  const category = field(form, "category") as Category, priceInput = field(form, "price");
+  const category = field(form, "category"), priceInput = field(form, "price");
   const price = Math.round(Number(priceInput) * 100), prep = Number(field(form, "prep"));
   if (!name || name.length > 100 || !description || description.length > 500 || !diet || diet.length > 80 ||
-    !categories.includes(category) || !/^\d+(\.\d{1,2})?$/.test(priceInput) || price < 100 || price > 1000000 ||
+    !category || category.length > 60 || !/^\d+(\.\d{1,2})?$/.test(priceInput) || price < 100 || price > 1000000 ||
     !Number.isInteger(prep) || prep < 1 || prep > 50) return fail("Check the item details, price and preparation time.");
   const { data } = await session.client.from("commerce_stalls").select("slug").eq("shop_id", shop).maybeSingle();
   if (!data) return fail("Save the storefront first.");

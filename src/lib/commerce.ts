@@ -23,7 +23,7 @@ export function catalogProduct({ stall_slug, sold_out, ...item }: CommerceMenuRo
 const activeStorefronts = unstable_cache(async (_project: string) => {
   const db = commerceDb();
   const [storefronts, menu] = await Promise.all([
-    db.from("commerce_stalls").select("slug,display_name,location,cuisine,court,photo,opens,closes,capacity,enabled,vendor_paused,closed_dates,basket_limit")
+    db.from("commerce_stalls").select("slug,display_name,location,cuisine,court,photo,opens,closes,capacity,enabled,vendor_paused,closed_dates,basket_limit,weekly_hours,pickup_minutes")
       .eq("published", true).eq("standing", "approved").order("display_name"),
     db.from("commerce_menu").select("id,stall_slug,name,category,description,price,prep,diet,photo,sold_out").eq("archived", false).order("name"),
   ]);
@@ -31,6 +31,7 @@ const activeStorefronts = unstable_cache(async (_project: string) => {
   const stalls: Stall[] = storefronts.data.map(row => ({
     id: row.slug, name: row.display_name, location: row.location, cuisine: row.cuisine, photo: row.photo,
     opening: row.opens?.slice(0, 5) ?? "", closing: row.closes?.slice(0, 5) ?? "",
+    weeklyHours: row.weekly_hours, pickupMinutes: row.pickup_minutes,
     foodCourt: row.court as FoodCourtId, capacity: row.capacity, closedDates: row.closed_dates, basketLimit: row.basket_limit, paused: !row.enabled || row.vendor_paused, approval: "Approved",
   }));
   const published = new Set(stalls.map(stall => stall.id));
@@ -51,13 +52,13 @@ export async function liveOrderHistory(includeOrders: boolean): Promise<StudentO
     if (!actor) return { signedIn: false, orders: [] };
     if (!includeOrders) return { signedIn: true, orders: [] };
     const { data, error } = await commerceDb().from("commerce_orders")
-      .select("id,detail,pickup_at,amount_paise,status,accept_until,provider_payment,refund,pickup_code,events,support,created_at")
+      .select("id,detail,pickup_at,pickup_minutes,amount_paise,status,accept_until,provider_payment,refund,pickup_code,events,support,created_at")
       .eq("student_id", actor.id).order("created_at", { ascending: false }).limit(100);
     if (error) throw error;
     return { signedIn: true, orders: data.map(row => {
       const start = Date.parse(row.pickup_at);
       return {
-        ...row.detail, id: row.id, total: row.amount_paise, slot: { start, end: start + 600_000 },
+        ...row.detail, id: row.id, total: row.amount_paise, slot: { start, end: start + (row.pickup_minutes ?? 10) * 60_000 },
         status: row.status as Fulfillment, placed: Date.parse(row.created_at), deadline: Date.parse(row.accept_until) || 0,
         payment: row.provider_payment ? "Verified" : "Pending",
         refund: row.refund, code: row.pickup_code, events: row.events, support: row.support ?? undefined,

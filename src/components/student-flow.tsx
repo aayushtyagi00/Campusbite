@@ -78,7 +78,7 @@ export function Checkout({ checkout = false, history }: { checkout?: boolean; hi
         {checkout &&
           <section className="panel panel-pad stack">
             <h2 className="row"><CalendarClock size={22} /> Pickup window</h2>
-            <p>Choose a 10-minute window. Times are shown in IST.</p>
+            <p>Choose a {stall.pickupMinutes ?? 10}-minute window. Times are shown in IST.</p>
             {slots.length ? <fieldset className="slot-grid"><legend className="sr-only">Available pickup windows</legend>{slots.map(slot =>
               <label className="slot-option" key={slot.start}><input type="radio" name="pickup" checked={selected === slot.start} onChange={() => { checkoutRequest.current = null; updateCheckout({ start: slot.start }); setError(""); }} />{slotLabel(slot)}</label>)}</fieldset> :
               <p className="muted">No pickup windows available for this bag within the next hour.</p>}
@@ -102,8 +102,8 @@ export function Checkout({ checkout = false, history }: { checkout?: boolean; hi
               setPending(true);
               setError("");
               try {
-                checkoutRequest.current ??= liveCheckoutRequest(JSON.stringify({ lines: data.cart, selected, note }));
-                const result = await startLiveCheckout(data.cart, selected, note, checkoutRequest.current);
+                checkoutRequest.current ??= liveCheckoutRequest(JSON.stringify({ lines: data.cart, selected, note, minutes: stall.pickupMinutes ?? 10 }));
+                const result = await startLiveCheckout(data.cart, selected, note, checkoutRequest.current, stall.pickupMinutes ?? 10);
                 if (result.signIn) router.push("/sign-in?returnTo=checkout");
                 else if (result.id) {
                   const id = result.id;

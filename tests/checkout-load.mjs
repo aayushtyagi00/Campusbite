@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { pickupSlots } from "../src/lib/campus.ts";
 import { createClient } from "@supabase/supabase-js";
 
 const { STAGING_SUPABASE_URL, STAGING_SUPABASE_SECRET_KEY, LOAD_TEST_STALL } = process.env;
@@ -13,13 +14,19 @@ const target = new URL(STAGING_SUPABASE_URL);
 assert(target.hostname !== "dgelmtwmtnfsoybgjsqm.supabase.co", "Use a test database. This is the live CampusBite project.");
 const db = createClient(STAGING_SUPABASE_URL, STAGING_SUPABASE_SECRET_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 const [configuration, menu] = await Promise.all([
-  db.from("commerce_stalls").select("shop_id,capacity").eq("slug", LOAD_TEST_STALL).eq("enabled", true).single(),
+  db.from("commerce_stalls").select("shop_id,capacity,opens,closes,weekly_hours,closed_dates,pickup_minutes,vendor_paused").eq("slug", LOAD_TEST_STALL).eq("enabled", true).single(),
   db.from("commerce_menu").select("id,name,price,prep").eq("stall_slug", LOAD_TEST_STALL).eq("sold_out", false).limit(1).single(),
 ]);
 assert(!configuration.error && !menu.error, "Enable the staging storefront with at least one menu item");
 const item = menu.data;
-const windowMs = 600_000;
-const slot = new Date(Math.ceil((Date.now() + (item.prep + 10) * 60_000) / windowMs) * windowMs).toISOString();
+const settings = configuration.data;
+const now = Date.now();
+const next = pickupSlots({id:LOAD_TEST_STALL,approval:"Approved",paused:settings.vendor_paused,capacity:settings.capacity,
+  opening:settings.opens.slice(0,5),closing:settings.closes.slice(0,5),weeklyHours:settings.weekly_hours,
+  closedDates:settings.closed_dates,pickupMinutes:settings.pickup_minutes}, [{prep:item.prep,qty:1}], [], now+60000)
+  .find(window=>window.start<=now+3600000);
+assert(next, "Choose a staging shop with an available pickup window within the next hour.");
+const slot = new Date(next.start).toISOString();
 
 const existing = await db.from("commerce_orders").select("id", { count: "exact", head: true })
   .eq("shop_id", configuration.data.shop_id).eq("pickup_at", slot);
@@ -30,7 +37,7 @@ const results = await Promise.all(Array.from({ length: concurrency }, async () =
   const started = performance.now();
   const result = await db.rpc("commerce_reserve", {
     actor: randomUUID(), request: randomUUID(), signature: randomUUID(), stall: LOAD_TEST_STALL,
-    slot, detail: { name: "Load test", items: [{ id: item.id, name: item.name, price: item.price, qty: 1 }], note: "" },
+    slot, detail: { pickup_minutes:settings.pickup_minutes, name: "Load test", items: [{ id: item.id, name: item.name, price: item.price, qty: 1 }], note: "" },
     amount: item.price,
   });
   return { latency: performance.now() - started, reserved: !result.error && Boolean(result.data?.id), error: result.error?.message, code: result.error?.code };

@@ -13,6 +13,7 @@ import { vendorRoles } from "@/lib/staff/database";
 import { staffSession } from "@/lib/staff/supabase";
 import { liveCommerce } from "@/lib/student-auth";
 import { orderUuid } from "@/lib/commerce";
+import { categories } from "@/lib/campus";
 import { VendorMenu } from "@/components/vendor-menu";
 import { Availability, VendorEarnings, WorkspaceOnboarding } from "@/components/vendor-settings";
 
@@ -75,7 +76,7 @@ async function ShopSettings({client,shop,section}:{client:Client;shop:string;sec
   if (!store.data) return <Notice>Your storefront setup is pending. <Link href={"/vendor/onboarding?shop="+shop}>View onboarding</Link>.</Notice>;
   if (section==="availability") return <Availability shop={shop} store={store.data} />;
   const menu = await client.from("commerce_menu").select("*").eq("stall_slug",store.data.slug).order("archived").order("name");
-  return menu.error ? <Notice>Menu editing is temporarily unavailable.</Notice> : <VendorMenu shop={shop} items={menu.data} />;
+  return menu.error ? <Notice>Menu editing is temporarily unavailable.</Notice> : <VendorMenu options={store.data.menu_categories ?? categories} shop={shop} items={menu.data} />;
 }
 
 async function OwnerTeam({ client, shopId, members }: {

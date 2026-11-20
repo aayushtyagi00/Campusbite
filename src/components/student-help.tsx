@@ -42,7 +42,7 @@ export function StudentHelp({ section }: { section: keyof typeof pages }) {
     {section === "pickup-refunds" && <>
       <section className="panel panel-pad stack">
         <h2>Pickup windows</h2>
-        <p>Select an available 10-minute pickup window at checkout. Track your order in My Orders and show your six-digit pickup code at the stall once it’s ready.</p>
+        <p>Select an available pickup window at checkout. Track your order in My Orders and show your six-digit pickup code at the stall once it’s ready.</p>
       </section>
       <section className="panel panel-pad stack">
         <h2>Cancellation and refunds</h2>

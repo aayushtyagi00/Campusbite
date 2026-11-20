@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight, Clock3, MapPin, Search, ShoppingBag, Utensils, Zap } from "lucide-react";
 import { useState } from "react";
-import { categories, defaultFoodCourt, foodCourts, isOrderable, money, pickupSlots, slotLabel, stallsAtCourt, type Product, type Stall } from "@/lib/campus";
+import { hoursOn, weekdays, defaultFoodCourt, foodCourts, isOrderable, money, pickupSlots, slotLabel, stallsAtCourt, type Product, type Stall } from "@/lib/campus";
 import { cartItems, previewTime, update, useClock, usePreview, usePreviewReady } from "@/lib/preview";
 import { Back, Empty, Photo, Status } from "./ui";
 import { Checkout, StudentOrders } from "./student-flow";
@@ -33,12 +33,14 @@ function Explore({ section }: { section: string }) {
   const court = section === "court";
   const selectedCourt = foodCourts.find(item => item.id === data.foodCourt) ?? foodCourts[0];
   const courtVendors = stallsAtCourt(data.stalls, selectedCourt.id);
+  const availableCategories = [...new Set(data.products.filter(item => !item.archived && courtVendors.some(shop=>shop.id===item.stall)).map(item=>item.category))].sort();
+  const selectedCategory = availableCategories.includes(category) ? category : "All";
   const needle = query.trim().toLowerCase();
   const vendors = courtVendors.filter(stall => {
     const menu = data.products.filter(item => item.stall === stall.id && !item.archived);
     const matchesStall = `${stall.name} ${stall.cuisine} ${stall.location}`.toLowerCase().includes(needle);
-    return menu.some(item => (category === "All" || item.category === category) && (matchesStall || item.name.toLowerCase().includes(needle)))
-      || (category === "All" && matchesStall);
+    return menu.some(item => (selectedCategory === "All" || item.category === selectedCategory) && (matchesStall || item.name.toLowerCase().includes(needle)))
+      || (selectedCategory === "All" && matchesStall);
   });
   return <>
     {home ?
@@ -68,7 +70,7 @@ function Explore({ section }: { section: string }) {
         <label className="search"><Search size={23} /><input type="search" placeholder="Find a stall or a dish" aria-label="Find a stall or a dish" value={query} onChange={event => setQuery(event.target.value)} /></label>
         <h2 className="filter-heading">Categories</h2>
         <div className="chips" aria-label="Filter by category">
-          {["All", ...categories].map(item => <button key={item} aria-pressed={category === item} onClick={() => setCategory(item)}>{item}</button>)}
+          {["All", ...availableCategories].map(item => <button key={item} aria-pressed={selectedCategory === item} onClick={() => setCategory(item)}>{item}</button>)}
         </div>
       </div>
       <div className="explore-results">
@@ -152,22 +154,27 @@ function Menu({ id }: { id?: string }) {
   const stall = data.stalls.find(item => item.id === id && item.approval === "Approved");
   if (!stall) return <Empty title="Stall unavailable"><Link className="button" href="/order-online">Choose another vendor</Link></Empty>;
   const menu = data.products.filter(item => item.stall === stall.id && !item.archived);
-  const groups = categories.filter(item => menu.some(product => product.category === item));
+  const groups = [...new Set(menu.map(item => item.category))].sort();
+  const selectedCategory = groups.includes(category) ? category : "All";
   return <>
     <Back href="/order-online">Choose a vendor</Back>
     <section className="menu-intro panel">
       <Photo name={stall.photo} />
       <div><p className="eyebrow">{stall.cuisine}</p><h1>{stall.name}</h1>
         <p className="row"><MapPin size={18} />{stall.location}</p>
-        <p className="row"><Clock3 size={18} />{stall.opening}–{stall.closing} IST</p>
+        {Object.keys(stall.weeklyHours ?? {}).length ? <details><summary className="text-link">Weekly hours (IST)</summary>
+          <dl className="vendor-facts">{weekdays.map(day=>{
+            const hours = hoursOn(day,{opens:stall.opening,closes:stall.closing},stall.weeklyHours);
+            return <div key={day}><dt>{day}</dt><dd>{hours ? hours.opens+"–"+hours.closes : "Closed"}</dd></div>;
+          })}</dl></details> : <p className="row"><Clock3 size={18} />{stall.opening}–{stall.closing} IST</p>}
         <Status tone={isOrderable(stall) && !data.orderingPaused ? "good" : "warn"}>{isOrderable(stall) && !data.orderingPaused ? "Scheduled pickup" : "Ordering paused"}</Status>
       </div>
     </section>
     <div className="menu-layout">
       <div className="menu-content">
-        <div className="chips space-y-section">{["All", ...groups].map(item => <button key={item} aria-pressed={category === item} onClick={() => setCategory(item)}>{item}</button>)}</div>
+        <div className="chips space-y-section">{["All", ...groups].map(item => <button key={item} aria-pressed={selectedCategory === item} onClick={() => setCategory(item)}>{item}</button>)}</div>
         {!groups.length && <Empty title="Menu is being updated" />}
-        {groups.filter(item => category === "All" || item === category).map(item => <section className="menu-group" key={item}>
+        {groups.filter(item => selectedCategory === "All" || item === selectedCategory).map(item => <section className="menu-group" key={item}>
           <h2>{item}</h2><div className="menu-grid">
             {menu.filter(product => product.category === item).map(product => <article className="panel product-card" key={product.id}>
               <Link href={`/products/${product.id}`} tabIndex={-1} aria-hidden="true"><Photo name={product.photo} /></Link>
