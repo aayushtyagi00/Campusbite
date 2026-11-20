@@ -1,4 +1,4 @@
-import { ClipboardList, Gauge, LayoutGrid, ShieldCheck, Store } from "lucide-react";
+import { ClipboardList, Gauge, LayoutGrid, ShieldCheck, Store, CookingPot, CalendarClock, Wallet } from "lucide-react";
 import Link from "next/link";
 import { NavigationHint } from "./navigation-hint";
 import { staffSignOut } from "@/lib/staff/actions";
@@ -7,7 +7,9 @@ import { Brand } from "./ui";
 
 const links = {
   vendor: [
-    ["/vendor/dashboard", "Shop dashboard", LayoutGrid],
+    ["/vendor/board", "Order board", LayoutGrid], ["/vendor/menu", "Menu editor", CookingPot],
+    ["/vendor/availability", "Availability", CalendarClock], ["/vendor/onboarding", "Onboarding", ClipboardList],
+    ["/vendor/earnings", "Earnings", Wallet],
   ],
   admin: [
     ["/admin", "Overview", Gauge], ["/admin/applications", "Vendor applications", ClipboardList],
@@ -15,13 +17,13 @@ const links = {
   ],
 } as const;
 
-export function OpsShell({ area, path, email, children }: { area: keyof typeof links; path: string; email: string; children: React.ReactNode }) {
+export function OpsShell({ area, path, email, shop, staffOnly, children }: { area: keyof typeof links; path: string; email: string; shop?: string; staffOnly?: boolean; children: React.ReactNode }) {
   return <div className="ops">
     <aside className="ops-sidebar">
       <Brand />
       <span className="eyebrow ops-area">{area === "vendor" ? "Vendor workspace" : "Admin workspace"}</span>
       <nav aria-label={area === "vendor" ? "Vendor navigation" : "Admin navigation"}>
-        {links[area].map(([href, label, Icon]) => <Link key={href} href={href} aria-current={path === href ? "page" : undefined}><Icon size={18} />{label}<NavigationHint /></Link>)}
+        {links[area].filter(([href]) => !staffOnly || href === "/vendor/board").map(([href, label, Icon]) => <Link key={href} href={shop ? href + "?shop=" + shop : href} aria-current={path === href ? "page" : undefined}><Icon size={18} />{label}<NavigationHint /></Link>)}
         {area === "admin" && liveCommerce() && <Link href="/admin/orders" aria-current={path === "/admin/orders" ? "page" : undefined}>
           <LayoutGrid size={18} /> Commerce operations
         <NavigationHint /></Link>}

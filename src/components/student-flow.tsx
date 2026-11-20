@@ -6,7 +6,7 @@ import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { clockTime, dateLabel, money, pickupSlots, slotLabel, statuses } from "@/lib/campus";
-import { acknowledgePrices, cartItems, clearPreviewCheckout, previewTime, updateCheckout, useClock, usePreview, visibleStatus } from "@/lib/preview";
+import { acknowledgePrices, removeMissingCartItems, cartItems, clearPreviewCheckout, previewTime, updateCheckout, useClock, usePreview, visibleStatus } from "@/lib/preview";
 import { confirmLiveCheckout, startLiveCheckout, updateLiveStudentOrder } from "@/lib/commerce-actions";
 import { selectedStudentOrder, selectStudentOrder, type StudentOrder, type StudentOrderHistory } from "@/lib/student-order-types";
 import { Quantity } from "./quantity";
@@ -51,9 +51,11 @@ export function Checkout({ checkout = false, history }: { checkout?: boolean; hi
     ? pickupSlots(stall, items, history?.orders ?? [], live ? now + 60_000 : now, clock).filter(slot => !live || slot.start <= now + 3_600_000)
     : [];
   const pricesChanged = items.some(item => item.priceChanged);
-  const canSubmit = slots.some(slot => slot.start === selected) && !pricesChanged;
+  const missingItems = data.products.length>0 && data.cart.length > items.length;
+  const unavailableNotice = missingItems && <div className="panel panel-pad stack"><Notice>An item in your bag has been removed from the menu.</Notice><button className="button secondary" onClick={()=>removeMissingCartItems(data.products)}>Remove unavailable items</button></div>;
+  const canSubmit = !missingItems && slots.some(slot => slot.start === selected) && !pricesChanged;
   const subtotal = items.reduce((sum, item) => sum + item.qty * item.price, 0);
-  if (!stall || !items.length) return <div className="narrow"><h1>Your bag</h1><Empty title="Your bag is empty"><Link className="button" href="/">Browse stalls</Link></Empty></div>;
+  if (!stall || !items.length) return <div className="narrow"><h1>Your bag</h1>{unavailableNotice}<Empty title="Your bag is empty"><Link className="button" href="/">Browse stalls</Link></Empty></div>;
   function openOrder(id: string) {
     selectStudentOrder(id);
     clearLiveCheckoutRequest();
@@ -70,6 +72,7 @@ export function Checkout({ checkout = false, history }: { checkout?: boolean; hi
         <section className="panel panel-pad stack"><h2>{stall.name}</h2>
           {items.map(item => <div className="row between order-line" key={item.id}><div><strong>{checkout && `${item.qty} × `}{item.name}</strong><p>{money(item.price * item.qty)}</p></div>{!checkout && <Quantity product={item} />}</div>)}
         </section>
+        {unavailableNotice}
         {unavailable && <Notice>Some items are no longer available. Remove them from your bag to continue.</Notice>}
         {pricesChanged && <div className="panel panel-pad stack"><Notice>One or more prices changed. Review the new total above before continuing.</Notice><button className="button secondary" onClick={() => acknowledgePrices(data.products)}>Accept updated prices</button></div>}
         {checkout &&
@@ -196,6 +199,7 @@ function StudentOrderDetails({ order, now, close }: { order: StudentOrder; now: 
               finally { setCancelling(false); }
             }}>Cancel order</button></>}
           {status === "ready" && <div className="pickup-code"><PackageCheck size={26} /><strong>{order.code}</strong><p>Show this six-digit code at the stall.</p></div>}
+          {status === "rejected" && order.rejection_reason && <p>Reason from the stall · {order.rejection_reason}</p>}
           {status === "accepted" && <p>The stall has accepted your order. Check back for preparation updates.</p>}
           {status === "preparing" && <p>The stall is preparing your meal.</p>}
           {status === "collected" && <p className="row"><Check size={18} /> Pickup complete</p>}

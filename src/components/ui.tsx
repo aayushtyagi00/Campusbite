@@ -5,7 +5,7 @@ export function Brand() {
   return <Link href="/" className="brand" aria-label="CampusBite home"><Store size={25} strokeWidth={2.4} /><span>campusbite<span className="brand-dot">.</span></span></Link>;
 }
 export function Photo({ name, className = "" }: { name: string; className?: string }) {
-  return name ? <img className={`photo ${className}`} src={`/food/${name}.jpg`} alt="" /> :
+  return name ? <img className={`photo ${className}`} src={name.startsWith("menu:") ? "/api/menu-photos/"+name.slice(5) : `/food/${name}.jpg`} alt="" /> :
     <div className={`photo photo-empty ${className}`} aria-hidden="true"><CookingPot size={28} /></div>;
 }
 export function Back({ href, children }: { href: string; children: React.ReactNode }) {

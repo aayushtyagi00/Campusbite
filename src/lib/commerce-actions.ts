@@ -33,6 +33,8 @@ export async function startLiveCheckout(lines: CartLine[], start: number, note: 
   const stall = stalls.find(item => item.id === items[0]?.stall);
   if (!stall || items.some(item => item.stall !== stall.id) || items.reduce((sum, item) => sum + item.qty, 0) > basketLimit)
     return { error: "Orders must contain up to eight items from one stall." };
+  if (stall.basketLimit && items.reduce((sum,item)=>sum+item.qty,0)>stall.basketLimit)
+    return { error: `Choose up to ${stall.basketLimit} items for this stall.` };
   const amount = items.reduce((sum, item) => sum + item.price * item.qty, 0);
   const detail = { stall: stall.id, name: stall.name, location: stall.location, note: note.trim(),
     items: items.map(({ id, name, price, qty }) => ({ id, name, price, qty })) };

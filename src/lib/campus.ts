@@ -11,7 +11,7 @@ export type Category = "Meals" | "Wraps" | "Drinks" | "Snacks";
 export type Stall = {
   id: string; name: string; location: string; cuisine: string; photo: string;
   foodCourt?: FoodCourtId;
-  opening: string; closing: string; capacity: number; paused: boolean;
+  opening: string; closing: string; capacity: number; paused: boolean; closedDates?: string[]; basketLimit?: number;
   approval: "Draft" | "Submitted" | "Under review" | "Approved" | "Changes requested" | "Rejected" | "Suspended";
 };
 
@@ -92,6 +92,7 @@ export function pickupSlots(
   const prep = basketPrepMinutes(lines);
   const earliest = now + (prep + 3.5) * minute;
   const campusDate = date.format(now);
+  if (stall.closedDates?.includes(campusDate) || lines.reduce((sum, line) => sum + line.qty, 0) > (stall.basketLimit ?? basketLimit)) return [];
   const open = Date.parse(`${campusDate}T${stall.opening}:00+05:30`);
   const close = Date.parse(`${campusDate}T${stall.closing}:00+05:30`);
   const slots: PickupSlot[] = [];

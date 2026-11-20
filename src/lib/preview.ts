@@ -94,12 +94,17 @@ export function setQuantity(product: Product, qty: number, replace = false, cata
   if (qty > previous && (!vendor || !isOrderable(vendor) || catalog.orderingPaused || product.soldOut || product.archived)) return "This item is currently unavailable.";
   if (qty > 0 && lines.some(line => line.stall !== product.stall) && !replace) return "different-stall";
   const remaining = (replace ? [] : snapshot.cart).filter(line => line.id !== product.id);
-  if (remaining.reduce((sum, line) => sum + line.qty, 0) + qty > basketLimit) return `Choose up to ${basketLimit} items per order.`;
+  const limit = vendor?.basketLimit ?? basketLimit;
+  if (qty > previous && remaining.reduce((sum, line) => sum + line.qty, 0) + qty > limit) return `Choose up to ${limit} items per order.`;
   const unitPrice = snapshot.cart.find(line => line.id === product.id)?.unitPrice ?? product.price;
   const cart = qty > 0 ? [...remaining, { id: product.id, qty, unitPrice }] : remaining;
   update(data => ({
     ...data, cart, checkout: replace || !cart.length ? empty.checkout : { ...data.checkout, start: 0 },
   }));
+}
+export function removeMissingCartItems(products: Product[]) {
+  const ids = new Set(products.map(item=>item.id));
+  update(data=>({...data,cart:data.cart.filter(line=>ids.has(line.id)),checkout:{...data.checkout,start:0}}));
 }
 export function acknowledgePrices(catalog = snapshot.products) {
   update(data => ({

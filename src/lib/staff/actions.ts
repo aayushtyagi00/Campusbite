@@ -178,6 +178,7 @@ export async function editTeamMember(area: StaffArea, operation: "add" | "change
     if (result.error || !result.data) return failure("Membership may have changed. Refresh the list and try again.");
   }
   revalidatePath("/admin/access");
+  revalidatePath("/vendor/onboarding");
   revalidatePath("/vendor/dashboard");
   return { message: operation === "revoke" ? "Access revoked." : operation === "add" ? "Team member added." : "Role updated." };
 }

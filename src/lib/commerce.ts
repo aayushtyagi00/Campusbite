@@ -23,15 +23,15 @@ export function catalogProduct({ stall_slug, sold_out, ...item }: CommerceMenuRo
 const activeStorefronts = unstable_cache(async (_project: string) => {
   const db = commerceDb();
   const [storefronts, menu] = await Promise.all([
-    db.from("commerce_stalls").select("slug,display_name,location,cuisine,court,photo,opens,closes,capacity,enabled")
+    db.from("commerce_stalls").select("slug,display_name,location,cuisine,court,photo,opens,closes,capacity,enabled,vendor_paused,closed_dates,basket_limit")
       .eq("published", true).eq("standing", "approved").order("display_name"),
-    db.from("commerce_menu").select("id,stall_slug,name,category,description,price,prep,diet,photo,sold_out").order("name"),
+    db.from("commerce_menu").select("id,stall_slug,name,category,description,price,prep,diet,photo,sold_out").eq("archived", false).order("name"),
   ]);
   if (storefronts.error || menu.error) throw new Error("Catalog is unavailable");
   const stalls: Stall[] = storefronts.data.map(row => ({
     id: row.slug, name: row.display_name, location: row.location, cuisine: row.cuisine, photo: row.photo,
     opening: row.opens?.slice(0, 5) ?? "", closing: row.closes?.slice(0, 5) ?? "",
-    foodCourt: row.court as FoodCourtId, capacity: row.capacity, paused: !row.enabled, approval: "Approved",
+    foodCourt: row.court as FoodCourtId, capacity: row.capacity, closedDates: row.closed_dates, basketLimit: row.basket_limit, paused: !row.enabled || row.vendor_paused, approval: "Approved",
   }));
   const published = new Set(stalls.map(stall => stall.id));
   return { stalls, products: (menu.data as CommerceMenuRow[]).filter(item => published.has(item.stall_slug)).map(catalogProduct) };

@@ -1,81 +1,81 @@
-import { VendorOnboarding } from "@/components/vendor-onboarding";
 import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { VendorOnboarding } from "@/components/vendor-onboarding";
 import { ShopMembers } from "@/components/shop-members";
 import { StaffForm } from "@/components/staff-forms";
 import { editTeamMember } from "@/lib/staff/actions";
-import { Suspense } from "react";
-import { notFound, redirect } from "next/navigation";
 import { OpsShell } from "@/components/ops-shell";
 import { StaffSignIn, VendorHome } from "@/components/staff-entry";
-import { ShopDashboard } from "@/components/staff-vendor";
-import { Notice } from "@/components/ui";
+import { OrderBoard } from "@/components/staff-vendor";
+import { Notice, Status } from "@/components/ui";
 import { vendorMemberships } from "@/lib/staff/access";
+import { vendorRoles } from "@/lib/staff/database";
 import { staffSession } from "@/lib/staff/supabase";
 import { liveCommerce } from "@/lib/student-auth";
+import { orderUuid } from "@/lib/commerce";
 import { VendorMenu } from "@/components/vendor-menu";
+import { Availability, VendorEarnings, WorkspaceOnboarding } from "@/components/vendor-settings";
+
+const sections = {board:"Order board",orders:"Order details",menu:"Menu editor",availability:"Availability",onboarding:"Onboarding",earnings:"Earnings"} as const;
+type Client = NonNullable<Awaited<ReturnType<typeof staffSession>>>["client"];
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ screen?: string[] }>;
-  searchParams: Promise<{ shop?: string | string[]; members?: string; name?: string; error?: string | string[] }>;
+  searchParams: Promise<{shop?:string;members?:string;name?:string;error?:string;period?:string;page?:string}>;
 }) {
-  const { screen = [] } = await params;
-  if (screen[0] === "onboarding" && screen.length <= 2) return <VendorOnboarding id={screen[1]} name={(await searchParams).name} />;
-  if (screen.length === 0) return <VendorHome />;
-  if (screen.length === 1 && screen[0] === "sign-in") {
-    const session = await staffSession();
-    if (session && (await vendorMemberships(session)).data?.length) redirect("/vendor/dashboard");
-    return <StaffSignIn area="vendor" googleError={(await searchParams).error === "google"} />;
-  }
-
+  const {screen=[]} = await params;
+  const query = await searchParams;
+  if (!screen.length) return <VendorHome />;
+  if (screen[0]==="onboarding" && screen.length<=2 && (!query.shop || screen.length===2)) return <VendorOnboarding id={screen[1]} name={query.name} />;
   const session = await staffSession();
+  if (screen.length===1 && screen[0]==="sign-in") {
+    if (session && (await vendorMemberships(session)).data?.length) redirect("/vendor/board");
+    return <StaffSignIn area="vendor" googleError={query.error==="google"} />;
+  }
   if (!session) redirect("/vendor/sign-in");
   const memberships = await vendorMemberships(session);
-  if (!memberships.data?.length) redirect("/vendor/sign-in");
-  if (screen.length !== 1) notFound();
-  if (["board", "menu", "availability", "earnings"].includes(screen[0])) redirect("/vendor/dashboard");
-  if (screen[0] !== "dashboard") notFound();
-
-  const { shop: requested, members } = await searchParams;
-  const grant = requested === undefined ? memberships.data[0] : memberships.data.find(item => item.shop_id === requested);
+  if (memberships.error) return <Notice>Shop access could not be loaded.</Notice>;
+  if (!memberships.data.length) redirect("/vendor/sign-in");
+  const grant = query.shop===undefined ? memberships.data[0] : memberships.data.find(row=>row.shop_id===query.shop);
   if (!grant) notFound();
-  const { client, email } = session;
-  const live = liveCommerce();
-  const orderQuery = live
-    ? client.from("vendor_orders").select("id,shop_id,reference,status,pickup_at,items,preparation_note")
-    : client.from("vendor_orders").select("id,shop_id,reference,status,pickup_at");
-  const active = ["awaiting", "accepted", "preparing", "ready"] as const;
-  const [shops, orders, sales, recent] = await Promise.all([
-    client.from("vendor_shops").select("id,name,created_at").in("id", memberships.data.map(item => item.shop_id)).order("name"),
-    live ? orderQuery.eq("shop_id", grant.shop_id).in("status", active).order("pickup_at").limit(250) :
-      orderQuery.eq("shop_id", grant.shop_id).order("pickup_at", { ascending: false }).limit(50),
-    grant.role === "staff" ? null : client.from("vendor_sales").select("id,shop_id,reference,amount_paise,recorded_at").eq("shop_id", grant.shop_id).order("recorded_at", { ascending: false }).limit(50),
-    live ? client.from("vendor_orders").select("id,shop_id,reference,status,pickup_at").eq("shop_id", grant.shop_id)
-      .in("status", ["collected", "cancelled", "expired", "rejected"]).order("pickup_at", { ascending: false }).limit(20) : null,
-  ]);
-  if (shops.error || orders.error || sales?.error || recent?.error) {
-    return <OpsShell area="vendor" path="/vendor/dashboard" email={email}><Notice>Shop data is temporarily unavailable.</Notice></OpsShell>;
-  }
-  const shop = shops.data.find(item => item.id === grant.shop_id);
-  if (!shop) notFound();
-  return <OpsShell area="vendor" path="/vendor/dashboard" email={email}>
-    <ShopDashboard shop={shop} shops={shops.data} role={grant.role} orders={[...orders.data, ...(recent?.data ?? [])]} sales={sales?.data} live={live} />
-    {grant.role === "owner" && <Suspense key={shop.id + "-team"} fallback={null}>
-      <OwnerTeam client={client} shopId={shop.id} members={members} />
-    </Suspense>}
-    {live && grant.role !== "staff" && <Suspense key={shop.id} fallback={null}>
-      <ShopMenu client={client} shopId={shop.id} />
-    </Suspense>}
+  const shop = grant.shop_id;
+  if (screen.length===1 && screen[0]==="dashboard") redirect((query.members && grant.role==="owner" ? "/vendor/onboarding?shop="+shop+"&members="+encodeURIComponent(query.members) : "/vendor/board?shop="+shop));
+  const section = screen[0] as keyof typeof sections;
+  if (!Object.hasOwn(sections,section) || (section==="orders" ? screen.length!==2 || !orderUuid.test(screen[1]) : screen.length!==1)) notFound();
+  const isBoard = section==="orders" || section==="board";
+  if (!isBoard && grant.role==="staff") notFound();
+  const shops = await session.client.from("vendor_shops").select("id,name").in("id",memberships.data.map(row=>row.shop_id)).order("name");
+  const current = shops.data?.find(row=>row.id===shop);
+  if (shops.error) return <Notice>Shop information could not be loaded.</Notice>;
+  if (!current) notFound();
+  const nav = isBoard ? "board" : section;
+  return <OpsShell area="vendor" path={"/vendor/"+nav} email={session.email} shop={shop} staffOnly={grant.role==="staff"}>
+    <header className="ops-heading"><div><p className="eyebrow">{current.name}</p><h1>{sections[section]}</h1></div><Status>{vendorRoles[grant.role]}</Status></header>
+    {shops.data.length>1 && <nav className="chips staff-records" aria-label="Your shops">{shops.data.map(row=>{
+      const destination = memberships.data.find(g=>g.shop_id===row.id)?.role==="staff" ? "board" : nav;
+      return <Link className={"button compact"+(row.id===shop?"":" secondary")} key={row.id} href={"/vendor/"+destination+"?shop="+row.id}>{row.name}</Link>;
+    })}</nav>}
+    {isBoard ? <BoardPage key={shop+section+screen[1]} client={session.client} shop={shop} selected={screen[1]} /> :
+      section==="earnings" ? <VendorEarnings client={session.client} shop={shop} period={query.period} page={query.page}/> :
+      <ShopSettings client={session.client} shop={shop} section={section} />}
+    {section==="onboarding" && grant.role==="owner" && <OwnerTeam client={session.client} shopId={shop} members={query.members} />}
   </OpsShell>;
 }
 
-async function ShopMenu({ client, shopId }: {
-  client: NonNullable<Awaited<ReturnType<typeof staffSession>>>["client"]; shopId: string;
-}) {
-  const mapping = await client.from("commerce_stalls").select("slug").eq("shop_id", shopId).maybeSingle();
-  if (mapping.error) return <Notice>Menu editing is temporarily unavailable.</Notice>;
-  if (!mapping.data) return null;
-  const menu = await client.from("commerce_menu").select("id,name,price,sold_out").eq("stall_slug", mapping.data.slug).order("name");
-  return menu.error ? <Notice>Menu editing is temporarily unavailable.</Notice> : <VendorMenu items={menu.data} />;
+async function BoardPage({client,shop,selected}:{client:Client;shop:string;selected?:string}) {
+  const result = await client.rpc("vendor_order_feed",{target_shop:shop,selected_order:selected});
+  if (selected && !result.error && !result.data?.length) notFound();
+  return <OrderBoard key={shop+(selected ?? "")} shop={shop} selected={selected} initial={result.error ? null : result.data} serverTime={Date.now()} live={liveCommerce()} />;
+}
+
+async function ShopSettings({client,shop,section}:{client:Client;shop:string;section:string}) {
+  const store = await client.from("commerce_stalls").select("*").eq("shop_id",shop).maybeSingle();
+  if (store.error) return <Notice>Storefront settings could not be loaded.</Notice>;
+  if (section==="onboarding") return <WorkspaceOnboarding client={client} shop={shop} store={store.data} />;
+  if (!store.data) return <Notice>Your storefront setup is pending. <Link href={"/vendor/onboarding?shop="+shop}>View onboarding</Link>.</Notice>;
+  if (section==="availability") return <Availability shop={shop} store={store.data} />;
+  const menu = await client.from("commerce_menu").select("*").eq("stall_slug",store.data.slug).order("archived").order("name");
+  return menu.error ? <Notice>Menu editing is temporarily unavailable.</Notice> : <VendorMenu shop={shop} items={menu.data} />;
 }
 
 async function OwnerTeam({ client, shopId, members }: {
@@ -86,7 +86,7 @@ async function OwnerTeam({ client, shopId, members }: {
   const grants = await client.from("vendor_access").select("shop_id,email,role,created_at")
     .eq("shop_id", shopId).order("email").range(offset, offset + 25);
   if (grants.error) return <Notice>Shop team is temporarily unavailable.</Notice>;
-  const href = `/vendor/dashboard?shop=${shopId}&members=`;
+  const href = `/vendor/onboarding?shop=${shopId}&members=`;
   return <section className="panel panel-pad stack staff-records">
     <h2>Shop team</h2>
     <StaffForm action={editTeamMember.bind(null, "vendor", "add")} label="Add team member">

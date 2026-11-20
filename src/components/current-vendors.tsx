@@ -12,15 +12,15 @@ import { StaffForm } from "./staff-forms";
 
 type Client = NonNullable<Awaited<ReturnType<typeof adminSession>>>["client"];
 const payments = { not_started: "Not started", pending: "In progress", verified: "Verified", legacy_enabled: "Existing checkout · verification unrecorded" };
-const label = (s?: Pick<Storefront, "standing" | "published" | "enabled">) => s?.standing === "suspended" ? "Suspended" :
-  s?.enabled ? "Accepting orders" : s?.published ? "Published · browse only" : "Unpublished";
+const label = (s?: Pick<Storefront, "standing" | "published" | "enabled" | "vendor_paused">) => s?.standing === "suspended" ? "Suspended" :
+  s?.enabled && s.vendor_paused ? "Paused by vendor" : s?.enabled ? "Accepting orders" : s?.published ? "Published · browse only" : "Unpublished";
 
 export async function CurrentVendors({ client, page }: { client: Client; page: number }) {
   const start = (page - 1) * 25;
   const shops = await client.from("vendor_shops").select("*").order("name").order("id").range(start, start + 25);
   if (shops.error) return <Notice>Current vendors could not be loaded.</Notice>;
   const visible = shops.data.slice(0, 25);
-  const listings = visible.length ? await client.from("commerce_stalls").select("shop_id,standing,enabled,published,location")
+  const listings = visible.length ? await client.from("commerce_stalls").select("shop_id,standing,enabled,published,location,vendor_paused")
     .in("shop_id", visible.map(s => s.id)) : null;
   return <><div className="ops-heading"><div><h1>Current Vendors</h1><p>Participating shops, storefronts and ordering status.</p></div>
     <Link href="/admin/applications" className="button secondary">Review applications</Link></div>
