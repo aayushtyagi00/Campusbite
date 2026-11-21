@@ -6,7 +6,7 @@
     "build": "next build --webpack",
     "start": "next start --hostname 127.0.0.1",
     "typecheck": "tsc --noEmit",
-    "test:policies": "node --test tests/staff-access.test.mjs tests/commerce.test.mjs tests/vendor-onboarding.test.mjs",
+    "test:policies": "node --test tests/staff-access.test.mjs tests/commerce.test.mjs tests/vendor-onboarding.test.mjs tests/student-recovery.test.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {

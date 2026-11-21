@@ -2,10 +2,21 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
 import { studentClient, studentReturnCookie, studentSettings } from "./student-auth";
 
-export async function studentAuth(operation: "sign-in" | "sign-up" | "confirm" | "send-reset" | "reset" | "google" | "sign-out", form: FormData) {
+export async function saveStudentProfile(form: FormData) {
+  const client = await studentClient(true);
+  const name = String(form.get("name") ?? "").trim();
+  if (!name || name.length > 80) return { error: "Enter a display name of up to 80 characters." };
+  if (!client) return { error: "Sign in to update your account." };
+  const { data: { user } } = await client.auth.getUser();
+  if (!user?.email || user.is_anonymous) return { error: "Sign in to update your account." };
+  const { error } = await client.auth.updateUser({ data: { campusbite_name: name,
+    campusbite_order_alerts: form.get("orderAlerts") === "on", campusbite_refund_alerts: form.get("refundAlerts") === "on" } });
+  return error ? { error: "Your changes could not be saved. Please try again." } : { saved: true };
+}
+
+export async function studentAuth(operation: "sign-in" | "sign-up" | "confirm" | "google" | "sign-out", form: FormData) {
   const client = await studentClient(true);
   const settings = studentSettings();
   if (!client || !settings) return { error: "Student authentication is temporarily unavailable." };
@@ -30,15 +41,6 @@ export async function studentAuth(operation: "sign-in" | "sign-up" | "confirm" |
   const password = String(form.get("password") ?? "");
   const token = String(form.get("code") ?? "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return { error: "Enter a valid email address." };
-  if (operation === "send-reset") {
-    if (!settings.origin) return { error: "Password recovery is unavailable until the student site address is configured." };
-    const { error } = await client.auth.resetPasswordForEmail(email, {
-      redirectTo: settings.origin + "/recovery",
-    });
-    if (error?.status === 429) return { error: "Please wait before requesting another code." };
-    if (error) return { error: "Could not send a recovery code. Please try again later." };
-    return { next: "reset" as const };
-  }
   if (operation === "confirm") {
     if (!/^\d{6,10}$/.test(token)) return { error: "Enter the code from your email." };
     const { error } = await client.auth.verifyOtp({ email, token, type: "email" });
@@ -46,20 +48,13 @@ export async function studentAuth(operation: "sign-in" | "sign-up" | "confirm" |
     redirect(destination);
   }
   if (password.length < 8 || password.length > 72) return { error: "Enter a password between 8 and 72 characters." };
-  if (operation === "reset") {
-    if (!/^\d{6,10}$/.test(token)) return { error: "Enter the code from your email." };
-    const recovery = createClient(settings.url, settings.key, { auth: { persistSession: false, autoRefreshToken: false } });
-    const verified = await recovery.auth.verifyOtp({ email, token, type: "recovery" });
-    if (verified.error) return { error: "That code is invalid or expired." };
-    const updated = await recovery.auth.updateUser({ password });
-    await recovery.auth.signOut({ scope: "local" });
-    if (updated.error) return { error: "Could not update the password. Request another code and choose a different password." };
-    redirect("/sign-in");
-  }
   if (operation === "sign-up") {
+    const name = String(form.get("name") ?? "").trim();
+    if (!name || name.length > 80) return { error: "Enter a display name of up to 80 characters." };
+    if (password !== form.get("confirmation")) return { error: "The passwords do not match." };
     if (!settings.origin) return { error: "Registration is unavailable until the student site address is configured." };
     const { data, error } = await client.auth.signUp({ email, password, options: {
-      emailRedirectTo: settings.origin + "/auth/student/callback",
+      emailRedirectTo: settings.origin + "/auth/student/callback", data: { campusbite_name: name },
     } });
     if (error) return { error: "Could not create an account. Check your details or try again later." };
     if (data.session) redirect(destination);

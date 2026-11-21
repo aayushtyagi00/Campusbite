@@ -30,9 +30,16 @@ Set `CAMPUSBITE_MODE=live` and `CAMPUSBITE_STAFF_ORIGIN=https://campusbite-lpu.v
 
 - `https://campusbite-lpu.vercel.app/auth/student/callback`
 - `https://campusbite-lpu.vercel.app/auth/staff/callback`
-- `https://campusbite-lpu.vercel.app/recovery`
+- `https://campusbite-lpu.vercel.app/recovery/*` (one recovery attempt ID)
 
-Use numeric code email templates for password recovery and staff password setup. Vendor applicants use the student Auth project to verify a contact email. Include `{{ .Token }}` in both its Confirm signup and Magic Link templates. Google Cloud's authorized redirect URI is the Supabase provider callback displayed in the Google provider settings.
+In the student Auth project, use the [student recovery email template](supabase/templates/student-recovery.html) under **Authentication → Email Templates → Reset password**. It includes both the recovery button and the code. Keep the numeric code in the staff password setup template. Vendor applicants use the student Auth project to verify a contact email. Include `{{ .Token }}` in both its Confirm signup and Magic Link templates. Google Cloud's authorized redirect URI is the Supabase provider callback displayed in the Google provider settings.
+
+### Roll out student accounts and recovery
+
+1. Apply [student recovery](supabase/migrations/202611200004_student_recovery.sql) once in the **commerce database** used by `SUPABASE_URL`. Profile names and notification choices are saved on each student's own Supabase Auth account. Existing students can set their display name from **Account**.
+2. Add the recovery redirect pattern above and install the recovery email template in the **student Auth project**. Set the email OTP expiration to one hour or less and retain the provider's rate limits. Application counters cover requests through CampusBite. Supabase also enforces its own limits for direct Auth requests.
+3. Create a Cloudflare Turnstile widget for the student site hostname. Add its public key as `TURNSTILE_SITE_KEY` and its secret as `TURNSTILE_SECRET_KEY` in Vercel. Deploy the app. Recovery requests at the shared-IP threshold require a verified challenge. On Vercel the server uses the platform-supplied IP header. Other hosts share one fallback bucket until their trusted proxy is integrated.
+4. With a test student, open **Account**, update the display name and notification choices, then reload. Order and refund alerts appear as changes arrive while **My Orders** is open. For recovery, request an email and use the link in a different browser. Repeat with a fresh email to check the code path. Both paths ask for the new password twice and return a sign-in link after success.
 
 ## Verify
 

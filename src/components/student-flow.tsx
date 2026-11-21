@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, CalendarClock, Check, Clock3, CreditCard, MapPin
 import Link from "next/link";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clockTime, dateLabel, money, pickupSlots, slotLabel, statuses } from "@/lib/campus";
 import { acknowledgePrices, removeMissingCartItems, cartItems, clearPreviewCheckout, previewTime, updateCheckout, useClock, usePreview, visibleStatus } from "@/lib/preview";
 import { confirmLiveCheckout, startLiveCheckout, updateLiveStudentOrder } from "@/lib/commerce-actions";
@@ -161,23 +161,48 @@ export function Checkout({ checkout = false, history }: { checkout?: boolean; hi
 
 export function StudentOrders({ history }: { history: StudentOrderHistory }) {
   const now = useClock();
+  const router = useRouter();
+  const previous = useRef<StudentOrder[]>([]);
+  const [alerts, setAlerts] = useState<string[]>([]);
+  const { orders, preferences } = history;
+  const active = orders.some(order => ["unpaid", "awaiting", "accepted", "preparing", "ready"].includes(order.status)
+    || ["Requested", "Pending"].includes(order.refund));
+  useEffect(() => {
+    if (!active) return;
+    const timer = window.setInterval(() => { if (!document.hidden) router.refresh(); }, 10000);
+    return () => window.clearInterval(timer);
+  }, [active, router]);
+  useEffect(() => {
+    const updates: string[] = [];
+    for (const order of orders) {
+      const prior = previous.current.find(item => item.id === order.id);
+      if (!prior) continue;
+      if (preferences?.orderAlerts && prior.status !== order.status && order.status !== "unpaid")
+        updates.push(displayReference(order.id) + " · " + statuses[order.status]);
+      if (preferences?.refundAlerts && prior.refund !== order.refund)
+        updates.push(displayReference(order.id) + " · Refund " + order.refund.toLowerCase());
+    }
+    previous.current = orders;
+    if (updates.length) setAlerts(updates);
+  }, [orders, preferences]);
+  const notices = alerts.length > 0 && <div className="panel panel-pad" role="status">
+    {alerts.map(message => <p key={message}>{message}</p>)}<button className="text-link" onClick={() => setAlerts([])}>Dismiss alerts</button></div>;
   const [id, setId] = useState<string | null>(null);
   useEffect(() => { setId(selectedStudentOrder()); }, []);
   function select(next: string | null) {
     selectStudentOrder(next);
     setId(next);
   }
-  const { orders } = history;
   if (history.unavailable) return <div className="narrow"><h1>Your orders</h1><Notice>Orders are temporarily unavailable.</Notice></div>;
   if (!history.signedIn) return <div className="narrow"><h1>Your orders</h1><Empty title="Sign in to see your orders"><Link className="button" href="/sign-in">Sign in</Link></Empty></div>;
   const order = orders.find(item => item.id === id);
   if (!order) return <div className="narrow order-history"><div className="page-heading"><h1>Your orders</h1><p>Track pickups and refund requests.</p></div>
-    {!orders.length && <Empty title="No orders yet"><Link className="button" href="/">Explore campus stalls</Link></Empty>}
+    {notices}{!orders.length && <Empty title="No orders yet"><Link className="button" href="/">Explore campus stalls</Link></Empty>}
     <div className="stack order-history-grid">{orders.map(item => <button type="button" className="panel panel-pad stack order-card" key={item.id} onClick={() => select(item.id)}>
       <div className="row between"><strong>{item.name}</strong><Status tone="good">{item.status === "unpaid" ? "Payment pending" : statuses[visibleStatus({ status: item.status, deadline: item.deadline }, now)]}</Status></div>
       <div className="row between"><span>{displayReference(item.id)} · {dateLabel(item.placed)}</span><strong>{money(item.total)}</strong></div>
     </button>)}</div></div>;
-  return <StudentOrderDetails key={order.id} order={order} now={now} close={() => select(null)} />;
+  return <>{notices}<StudentOrderDetails key={order.id} order={order} now={now} close={() => select(null)} /></>;
 }
 
 function displayReference(id: string) {
@@ -189,13 +214,6 @@ function StudentOrderDetails({ order, now, close }: { order: StudentOrder; now: 
   const [error, setError] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const status = order.status === "unpaid" ? "unpaid" : visibleStatus({ status: order.status, deadline: order.deadline }, now);
-  const refresh = (["unpaid", "awaiting", "accepted", "preparing", "ready"].includes(order.status)
-    || ["Requested", "Pending"].includes(order.refund));
-  useEffect(() => {
-    if (!refresh) return;
-    const timer = window.setInterval(() => { if (!document.hidden) router.refresh(); }, 8000 + Math.random() * 4000);
-    return () => window.clearInterval(timer);
-  }, [refresh, router]);
   const seconds = now ? Math.max(0, Math.ceil((order.deadline - now) / 1000)) : 90;
   const refund = status === "expired" && order.payment === "Verified" && order.refund === "None" ? "Requested" : order.refund;
   return <div className="narrow transaction-page"><button type="button" className="back" onClick={close}><ArrowLeft size={17} /> Your orders</button>

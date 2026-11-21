@@ -3,6 +3,7 @@ import "server-only";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { portalOrigin } from "./auth-redirect";
+import { studentProfile } from "./student-profile";
 
 export const studentCookie = "campusbite-student-auth";
 export const studentReturnCookie = "campusbite-student-return";
@@ -45,5 +46,12 @@ export async function studentIdentity(write = false) {
   const { data, error } = await client.auth.getClaims();
   const claims = data?.claims;
   if (error || !claims?.sub || !claims.email || claims.role !== "authenticated" || claims.is_anonymous) return null;
-  return { id: claims.sub, email: claims.email };
+  return { id: claims.sub, email: claims.email, profile: studentProfile(claims.user_metadata) };
+}
+
+export async function studentAccount() {
+  const client = await studentClient();
+  if (!client) return null;
+  const { data: { user } } = await client.auth.getUser();
+  return user?.email && !user.is_anonymous ? { id: user.id, email: user.email, profile: studentProfile(user.user_metadata) } : null;
 }

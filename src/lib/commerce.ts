@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import type { FoodCourtId, Fulfillment, Stall } from "./campus";
 import type { StudentOrderHistory } from "./student-order-types";
-import { studentIdentity } from "./student-auth";
+import { studentAccount, studentIdentity } from "./student-auth";
 import type { CommerceMenuRow } from "./staff/database";
 
 export const commerceDb = () => {
@@ -48,14 +48,14 @@ export async function liveStorefronts() {
 
 export async function liveOrderHistory(includeOrders: boolean): Promise<StudentOrderHistory> {
   try {
-    const actor = await studentIdentity();
+    const actor = includeOrders ? await studentAccount() : await studentIdentity();
     if (!actor) return { signedIn: false, orders: [] };
     if (!includeOrders) return { signedIn: true, orders: [] };
     const { data, error } = await commerceDb().from("commerce_orders")
       .select("id,detail,pickup_at,pickup_minutes,amount_paise,status,accept_until,provider_payment,refund,pickup_code,events,support,created_at")
       .eq("student_id", actor.id).order("created_at", { ascending: false }).limit(100);
     if (error) throw error;
-    return { signedIn: true, orders: data.map(row => {
+    return { signedIn: true, preferences: { orderAlerts: actor.profile.orderAlerts, refundAlerts: actor.profile.refundAlerts }, orders: data.map(row => {
       const start = Date.parse(row.pickup_at);
       return {
         ...row.detail, id: row.id, total: row.amount_paise, slot: { start, end: start + (row.pickup_minutes ?? 10) * 60_000 },
