@@ -16,7 +16,7 @@ test("commerce keeps reservations, payment state, and shop access consistent", a
     create function auth.uid() returns uuid language sql stable
       as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   `);
-  for (const file of ["202611180001_staff_access", "202611180002_commerce"]) {
+  for (const file of ["202611180001_staff_access", "202611180002_commerce", "202611220001_razorpay_payments"]) {
     await db.exec(await readFile(new URL("../supabase/migrations/" + file + ".sql", import.meta.url), "utf8"));
   }
   const student = "10000000-0000-0000-0000-000000000001";
@@ -64,8 +64,16 @@ test("commerce keeps reservations, payment state, and shop access consistent", a
   });
   await t.test("payment can only be recorded at the stored amount and is applied once", async () => {
     await db.query("update public.commerce_orders set provider_order='order_A' where id=$1", [id]);
+    const event = (role, mode, amount) => as(role, tx => tx.query(
+      "select public.commerce_apply_razorpay_event('webhook:delivery-A','payment.captured','pay_A','order_A',$1,'INR',$2)", [amount,mode]).then(get));
+    assert.equal(await event("service_role","test",4000),false);
+    await assert.rejects(event("authenticated","live",4000),/permission denied/);
+    await assert.rejects(as("service_role", tx => tx.query("update public.razorpay_environment set mode='test'")),/permission denied/);
+    await assert.rejects(event("service_role","live",3999),/reconciliation/);
     assert.equal(await capture("order_A", "pay_A", 3999), false);
-    assert.equal(await capture("order_A", "pay_A"), true);
+    assert.equal(await event("service_role","live",4000),true);
+    assert.equal(await event("service_role","live",4000),true);
+    assert.equal(Number(get(await db.query("select count(*) from campusbite_private.razorpay_events"))),1);
     assert.equal(await capture("order_A", "pay_A"), true);
     assert.equal(await capture("order_A", "pay_B"), false);
     assert.equal(Number(get(await db.query("select count(*) from public.vendor_orders"))), 1);

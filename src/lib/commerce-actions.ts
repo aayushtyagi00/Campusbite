@@ -4,19 +4,17 @@ import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { basketLimit, type CartLine, type Product } from "./campus";
 import { commerceDb, liveStorefronts, orderUuid } from "./commerce";
-import { findOrCreateRazorpayOrder, providerPayment, razorpay, razorpayKey, signed } from "./razorpay";
+import { findOrCreateRazorpayOrder, paymentSettings, providerPayment, signed, verifiedCapture } from "./razorpay";
 import { liveCommerce, studentIdentity } from "./student-auth";
 
 type Result = { id?: string; error?: string; signIn?: boolean; gateway?: { order: string; key: string; amount: number } };
 
 export async function startLiveCheckout(lines: CartLine[], start: number, note: string, requestId: string, minutes = 10): Promise<Result> {
   if (!liveCommerce()) return { error: "Live checkout is disabled." };
-  const key = razorpayKey();
-  if (!key || !process.env.RAZORPAY_KEY_SECRET || !process.env.RAZORPAY_WEBHOOK_SECRET || !process.env.COMMERCE_JOB_SECRET) {
-    return { error: "Payments are temporarily unavailable." };
-  }
   const actor = await studentIdentity(true);
   if (!actor) return { signIn: true };
+  const settings = await paymentSettings().catch(() => null);
+  if (!settings) return { error: "Payments are temporarily unavailable for this environment." };
   if (!Array.isArray(lines) || lines.length < 1 || lines.length > basketLimit || !orderUuid.test(requestId) ||
       !Number.isInteger(minutes) || minutes < 1 || minutes > 60 || !Number.isSafeInteger(start) || typeof note !== "string" || note.length > 180) return { error: "Review your bag and pickup window." };
   const { stalls, products } = await liveStorefronts();
@@ -57,35 +55,44 @@ export async function startLiveCheckout(lines: CartLine[], start: number, note: 
     if (!order || order.fingerprint !== fingerprint) return { error: "Your bag changed. Start checkout again." };
     if (order.status !== "unpaid") return { id: order.id };
     if (Date.parse(order.reserved_until) <= Date.now()) return { error: "Your payment window expired. Choose a pickup window again." };
-    const provider = order.provider_order ?? await findOrCreateRazorpayOrder(order.id, amount);
+    let provider = order.provider_order;
     if (!order.provider_order) {
-      const update = await db.from("commerce_orders").update({ provider_order: provider })
-        .eq("id", order.id).is("provider_order", null);
+      const candidate = await findOrCreateRazorpayOrder(order.id, amount);
+      const update = await db.from("commerce_orders").update({ provider_order: candidate })
+        .eq("id", order.id).is("provider_order", null).select("provider_order").maybeSingle();
       if (update.error) throw update.error;
+      provider = update.data?.provider_order;
+      if (!provider) {
+        const bound = await db.from("commerce_orders").select("provider_order").eq("id", order.id).single();
+        if (bound.error || !bound.data?.provider_order) throw new Error("Could not recover checkout");
+        provider = bound.data.provider_order;
+      }
     }
     if (Date.parse(order.reserved_until) <= Date.now()) return { error: "Your payment window expired. Choose a pickup window again." };
-    return { id: order.id, gateway: { order: provider, key, amount } };
+    return { id: order.id, gateway: { order: provider, key: settings.key, amount } };
   } catch { return { error: "Could not open payment. Please retry the same checkout." }; }
 }
 
 export async function confirmLiveCheckout(id: string, payment: string, signature: string): Promise<Result> {
-  if (!orderUuid.test(id) || !providerPayment.test(payment) || typeof signature !== "string") return { error: "Invalid payment response." };
+  if (!liveCommerce() || typeof id !== "string" || !orderUuid.test(id) || typeof payment !== "string" ||
+    payment.length > 80 || !providerPayment.test(payment) || typeof signature !== "string") return { error: "Invalid payment response." };
   const actor = await studentIdentity(true);
   if (!actor) return { signIn: true };
   try {
     const db = commerceDb();
-    const { data, error } = await db.from("commerce_orders").select("provider_order")
+    const { data, error } = await db.from("commerce_orders").select("provider_order,amount_paise")
       .eq("id", id).eq("student_id", actor.id).single();
     const secret = process.env.RAZORPAY_KEY_SECRET?.trim();
     if (error || !data?.provider_order || !secret || !signed(data.provider_order + "|" + payment, signature, secret))
       return { error: "The payment could not be verified." };
-    const captured = await razorpay("/payments/" + payment);
-    if (captured.status === "captured" && captured.order_id === data.provider_order && captured.id === payment) {
-      const result = await db.rpc("commerce_capture", {
-        gateway_order: captured.order_id, payment, amount: captured.amount, currency: captured.currency,
-      });
-      if (result.error || !result.data) return { error: "We are still checking your payment. Check My Orders before trying again." };
-    }
+    const settings = await paymentSettings();
+    if (!settings || !await verifiedCapture(data.provider_order, payment, data.amount_paise))
+      return { error: "Payment is awaiting confirmation. Check My Orders before retrying." };
+    const result = await db.rpc("commerce_apply_razorpay_event", {
+      event_id: "callback:" + payment, kind: "payment.captured", payment_id: payment,
+      gateway_order: data.provider_order, amount: data.amount_paise, currency: "INR", key_mode: settings.mode,
+    });
+    if (result.error || result.data !== true) return { error: "Payment is awaiting confirmation. Check My Orders before retrying." };
     revalidatePath("/orders");
     return { id };
   } catch { return { error: "We are still checking your payment. Check My Orders before trying again." }; }

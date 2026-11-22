@@ -22,10 +22,16 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000,
   }, {
-    command: "node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3109",
+    command: "node --require ./tests/razorpay-fixture.cjs ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3109",
     url: "http://127.0.0.1:3109/auth/student/callback",
     env: {
       CAMPUSBITE_MODE: "live",
+      RAZORPAY_TEST_KEY_ID: "rzp_test_Fixture",
+      RAZORPAY_TEST_KEY_SECRET: "admin-payment-fixture",
+      RAZORPAY_KEY_ID: "rzp_test_CommerceFixture",
+      RAZORPAY_KEY_SECRET: "student-payment-fixture",
+      RAZORPAY_WEBHOOK_SECRET: "payment-webhook-fixture",
+      COMMERCE_JOB_SECRET: "worker-fixture",
       CAMPUSBITE_STAFF_ORIGIN: "http://127.0.0.1:3000",
       VERCEL_ENV: "production",
       VERCEL_PROJECT_PRODUCTION_URL: "campusbite-lpu.vercel.app",

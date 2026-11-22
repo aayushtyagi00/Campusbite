@@ -112,7 +112,7 @@ export function Checkout({ checkout = false, history }: { checkout?: boolean; hi
             <div className="row between total"><strong>Total</strong><strong>{money(subtotal)}</strong></div>
             <p>You can cancel while the stall is still deciding whether to accept. Rejected and expired orders request a full refund.</p>
           </section>
-          {error && <Notice>{error}</Notice>}
+          {error && <div><Notice>{error}</Notice><Link className="text-link" href="/orders">Check My Orders</Link></div>}
           {history?.unavailable ? <Notice>Orders are temporarily unavailable.</Notice> :
             history?.signedIn && !live ? <Notice>Online payment is currently unavailable.</Notice> :
             history?.signedIn ? <button className="button full" disabled={!canSubmit || pending || !gatewayReady} onClick={async () => {
@@ -136,7 +136,11 @@ export function Checkout({ checkout = false, history }: { checkout?: boolean; hi
                         currency: "INR", name: "CampusBite", modal: { ondismiss: resolve },
                         handler: response => {
                           void confirmLiveCheckout(id, response.razorpay_payment_id, response.razorpay_signature)
-                            .finally(() => { openOrder(id); resolve(); }).catch(reject);
+                            .then(result => {
+                              if (result.id === id) openOrder(id);
+                              else setError(result.error ?? "Sign in to check the payment in My Orders.");
+                              resolve();
+                            }).catch(reject);
                         },
                       });
                       checkout.open();

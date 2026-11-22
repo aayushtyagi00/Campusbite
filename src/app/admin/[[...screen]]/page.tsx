@@ -9,6 +9,8 @@ import { adminSession } from "@/lib/staff/access";
 import { liveCommerce } from "@/lib/student-auth";
 import { CurrentVendors, VendorRecord, ApplicationReview } from "@/components/current-vendors";
 import { RecentCommerceOrders } from "@/components/recent-commerce-orders";
+import { AdminPaymentTest } from "@/components/admin-payment-test";
+import { adminTestCredentials } from "@/lib/razorpay";
 
 const pageSize = 25;
 
@@ -42,6 +44,9 @@ export default async function Page({ params, searchParams }: {
 
   if (["overview", "refunds", "finance", "settings"].includes(section)) redirect("/admin");
   const { client, email } = session;
+  if (section === "payment-test") return <OpsShell area="admin" path="/admin/payment-test" email={email}>
+    <AdminPaymentTest configured={Boolean(adminTestCredentials())} />
+  </OpsShell>;
 
   if (section === "vendors" || (section === "applications" && screen[1])) {
     return <OpsShell area="admin" path={"/admin/"+section} email={email}>

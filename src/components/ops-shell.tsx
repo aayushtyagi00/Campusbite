@@ -14,6 +14,7 @@ const links = {
   admin: [
     ["/admin", "Overview", Gauge], ["/admin/applications", "Vendor applications", ClipboardList],
     ["/admin/vendors", "Current Vendors", Store], ["/admin/access", "Access Management", ShieldCheck],
+    ["/admin/payment-test", "Test payment", Wallet],
   ],
 } as const;
 

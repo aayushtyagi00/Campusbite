@@ -32,6 +32,8 @@ test("the public vendor page offers applications while staff routes require sign
 });
 
 test("a cached sample profile cannot sign in or open orders", async ({ page }) => {
+  await page.goto("/admin/payment-test");
+  await expect(page).toHaveURL(/\/admin\/sign-in$/);
   await page.goto("/");
   await page.evaluate(() => localStorage.setItem("campusbite.preview.v1", JSON.stringify({
     student: { name: "Old profile", email: "old@example.test" },

@@ -1,7 +1,67 @@
 import { createServer } from "node:http";
+import { createHmac } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 test.use({ baseURL: "http://127.0.0.1:3109" });
+
+test("a signed capture webhook verifies the provider payment before recording its event", async ({ request }) => {
+  const events: unknown[] = [];
+  const fixture = createServer(async (req,res) => {
+    const path = new URL(req.url!, "http://localhost").pathname;
+    res.setHeader("Content-Type","application/json");
+    if (path === "/rest/v1/razorpay_environment") return res.end(JSON.stringify({mode:"test"}));
+    if (path === "/rest/v1/commerce_orders") return res.end(JSON.stringify({provider_payment:null,amount_paise:100}));
+    if (path === "/rest/v1/rpc/commerce_apply_razorpay_event") {
+      let body = "";
+      for await (const chunk of req) body += chunk;
+      events.push(JSON.parse(body));
+      return res.end("true");
+    }
+    return res.writeHead(404).end("{}");
+  });
+  await new Promise<void>((resolve,reject) => fixture.once("error",reject).listen(3110,"127.0.0.1",resolve));
+  try {
+    const data = JSON.stringify({event:"payment.captured",payload:{payment:{entity:{
+      id:"pay_Captured",order_id:"order_Fixture",status:"captured",amount:100,currency:"INR",
+    }}}});
+    const response = await request.post("/api/payments/razorpay",{data,headers:{
+      "x-razorpay-signature":createHmac("sha256","payment-webhook-fixture").update(data).digest("hex"),
+      "x-razorpay-event-id":"fixture-delivery",
+    }});
+    expect(response.status()).toBe(204);
+    expect(events).toEqual([{event_id:"webhook:fixture-delivery",kind:"payment.captured",payment_id:"pay_Captured",
+      gateway_order:"order_Fixture",amount:100,currency:"INR",key_mode:"test"}]);
+  } finally {
+    await new Promise<void>(resolve => fixture.close(() => resolve()));
+  }
+});
+
+test("admin test checkout confirms capture and distinguishes authorization", async ({ page, context }) => {
+  const user = { id:"00000000-0000-4000-8000-000000000085", email:"admin@example.test", email_confirmed_at:"2026-11-19T00:00:00Z" };
+  const fixture = createServer((req,res) => {
+    res.setHeader("Content-Type","application/json");
+    if (req.url === "/auth/v1/user") return res.end(JSON.stringify(user));
+    if (req.url === "/rest/v1/rpc/campusbite_is_admin" || req.url === "/rest/v1/rpc/campusbite_consume_attempt") return res.end("true");
+    return res.writeHead(404).end("{}");
+  });
+  await new Promise<void>((resolve,reject) => fixture.once("error",reject).listen(3110,"127.0.0.1",resolve));
+  try {
+    const session = { access_token:"local-admin-token",refresh_token:"local-refresh",expires_at:Math.floor(Date.now()/1000)+3600,user };
+    await context.addCookies([{ name:"campusbite-staff",value:"base64-"+Buffer.from(JSON.stringify(session)).toString("base64url"),url:"http://127.0.0.1:3109" }]);
+    for (const payment of ["pay_Authorized","pay_Captured"]) {
+      const signature = createHmac("sha256","admin-payment-fixture").update("order_Fixture|"+payment).digest("hex");
+      await page.route("https://checkout.razorpay.com/v1/checkout.js", route => route.fulfill({
+        contentType:"text/javascript", body:`window.Razorpay = class { constructor(options){ this.options = options } open(){ this.options.handler(${JSON.stringify({razorpay_payment_id:payment,razorpay_signature:signature})}) } };`,
+      }));
+      await page.goto("/admin/payment-test");
+      await page.getByRole("button",{name:"Test ₹1 payment"}).click();
+      await expect(page.getByRole("status")).toContainText(payment === "pay_Captured" ? "Verified ₹1 test payment" : "Capture is unconfirmed");
+      await page.unroute("https://checkout.razorpay.com/v1/checkout.js");
+    }
+  } finally {
+    await new Promise<void>(resolve => fixture.close(() => resolve()));
+  }
+});
 
 test("shared Supabase Auth uses the deployed student callback and remembers checkout", async ({ page, context }) => {
   await page.route("http://127.0.0.1:3110/auth/v1/authorize**", route => route.fulfill({ body: "Test provider" }));

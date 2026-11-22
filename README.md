@@ -114,6 +114,22 @@ Before connecting live commerce, verify email delivery and role checks against y
 
 ## Configure live commerce in staging
 
+### Try Razorpay on the published website
+
+In Razorpay Dashboard, select **Test Mode** and generate a test key pair. In the Vercel project's **Settings → Environment Variables**, set `RAZORPAY_TEST_KEY_ID` and `RAZORPAY_TEST_KEY_SECRET` for the **Production** environment. Redeploy the app. Use a fresh test secret if the previous one was shared in chat.
+
+Sign in as a CampusBite admin and open **Test payment** at `/admin/payment-test`. Select **Test ₹1 payment** and use a [Razorpay test payment method](https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/integration-steps/#test-integration). A successful check shows the payment ID after the server verifies the signature, captured status, order, full amount, currency and refund amount. Find that ID in the Test Mode dashboard. This isolated check works without a webhook or payment migration and creates no food order, stock reservation or vendor sale.
+
+### Test the student-to-vendor flow
+
+Use a separate HTTPS preview deployment and a dedicated Supabase test database for a complete rehearsal including webhooks, fulfillment and refunds. Apply all migrations, including `202611220001_razorpay_payments.sql`, before enabling student checkout. The migration defaults to real payments. Run the following **only in the dedicated test database**, as its owner:
+
+```sql
+update public.razorpay_environment set mode = 'test' where singleton;
+```
+
+Keep the production commerce database in `live` mode. Only the dedicated test deployment gets the ordinary `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` set to test credentials. Configure webhooks and the scheduler as described below. The environment check blocks a mismatched key before checkout and before the refund worker processes orders.
+
 1. Copy `.env.example` to **`.env.local`** at the root of the project. Keep secrets in this file locally and in your deployment's server environment settings. Use Razorpay **Test Mode** credentials while testing. Set `CAMPUSBITE_MODE=live` and restart Next.js after setting the variables.
 
    | Variable | Where it comes from |
