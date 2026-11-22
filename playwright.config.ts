@@ -12,8 +12,12 @@ export default defineConfig({
     launchOptions: { executablePath: process.env.CAMPUSBITE_TEST_BROWSER || undefined },
   },
   webServer: [{
+    command: "node tests/public-catalog-fixture.mjs",
+    url: "http://127.0.0.1:3111",
+    reuseExistingServer: false,
+  }, {
     command: "node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3108",
-    env: { CAMPUSBITE_MODE: "preview", SUPABASE_URL: "http://127.0.0.1:3110", SUPABASE_PUBLISHABLE_KEY: "test-key", SUPABASE_SECRET_KEY: "test-server-key", STUDENT_SUPABASE_URL: "", STUDENT_SUPABASE_PUBLISHABLE_KEY: "" },
+    env: { CAMPUSBITE_MODE: "preview", SUPABASE_URL: "http://127.0.0.1:3111", SUPABASE_PUBLISHABLE_KEY: "test-key", SUPABASE_SECRET_KEY: "test-server-key", STUDENT_SUPABASE_URL: "", STUDENT_SUPABASE_PUBLISHABLE_KEY: "" },
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120_000,

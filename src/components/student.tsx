@@ -77,8 +77,8 @@ function Explore({ section }: { section: string }) {
         <div className="section-head"><div><h2>{home ? "Campus cafés & food vendors" : "Choose a vendor"} <span>({vendors.length})</span></h2><p>{home ? `Browse pickup options at ${selectedCourt.name}.` : "Select a vendor to view its menu."}</p></div></div>
         <div className="stall-grid">{vendors.map(stall => <StallCard key={stall.id} stall={stall} now={now} />)}</div>
         {!courtVendors.length ? <Empty title="No vendors listed at this food court yet">
-          <p>Choose another food court to browse available vendors.</p>
-          {selectedCourt.id !== defaultFoodCourt && <button className="button secondary" onClick={() => update(current => ({ ...current, foodCourt: defaultFoodCourt }))}>Show UniMall vendors</button>}
+          {data.stalls.length > 0 && <p>Choose another food court to browse available vendors.</p>}
+          {selectedCourt.id !== defaultFoodCourt && stallsAtCourt(data.stalls, defaultFoodCourt).length > 0 && <button className="button secondary" onClick={() => update(current => ({ ...current, foodCourt: defaultFoodCourt }))}>Show UniMall vendors</button>}
         </Empty> : !vendors.length && <Empty title="No stalls found"><p>Try a different dish or category.</p><button className="button secondary" onClick={() => { setQuery(""); setCategory("All"); }}>Clear filters</button></Empty>}
       </div>
     </div>
@@ -92,7 +92,7 @@ function Explore({ section }: { section: string }) {
 function VendorSlider({ vendors, court }: { vendors: Stall[]; court: string }) {
   const [position, setPosition] = useState(0);
   const ready = usePreviewReady();
-  if (!vendors.length) return <div className="hero-feature"><Photo name="rolling" /></div>;
+  if (!vendors.length) return null;
   const active = vendors[position % vendors.length];
   const move = (step: number) => setPosition(current => (current + vendors.length + step) % vendors.length);
   return <section className="hero-feature" aria-label="Featured campus vendors">

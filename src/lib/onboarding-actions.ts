@@ -109,6 +109,7 @@ export async function reviewApplication(id: string, revision: number, _state: Fe
     ? "This shop already exists. Select the existing shop to link it." : "Review could not be saved.");
   revalidatePath("/admin", "layout");
   revalidatePath("/vendor/onboarding", "layout");
+  updateTag("campusbite-storefronts");
   return { message: "Review saved." };
 }
 

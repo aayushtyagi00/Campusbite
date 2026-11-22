@@ -50,19 +50,19 @@ test("a cached sample profile cannot sign in or open orders", async ({ page }) =
 });
 
 test("the bag requires confirmation for a different stall and a changed price", async ({ page }) => {
-  await page.goto("/stalls/rolling-kitchen");
-  await page.getByRole("button", { name: "Add Paneer Tikka Wrap" }).click();
-  await page.goto("/stalls/chai-co");
-  await page.getByRole("button", { name: "Add Adrak Elaichi Chai" }).click();
+  await page.goto("/stalls/campus-wraps");
+  await page.getByRole("button", { name: "Add Mint Wrap" }).click();
+  await page.goto("/stalls/courtyard-tea");
+  await page.getByRole("button", { name: "Add Ginger Tea" }).click();
   await expect(page.getByRole("dialog", { name: "Replace your bag?" })).toBeVisible();
   await page.getByRole("button", { name: "Keep bag" }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
-  await page.getByRole("button", { name: "Add Adrak Elaichi Chai" }).click();
+  await page.getByRole("button", { name: "Add Ginger Tea" }).click();
   await page.getByRole("button", { name: "Replace bag" }).click();
   await page.getByRole("link", { name: "View bag" }).click();
   await expect(page.getByRole("heading", { name: "Your bag" })).toBeVisible();
-  await expect(page.getByText("Adrak Elaichi Chai", { exact: true })).toBeVisible();
-  await expect(page.getByText("Paneer Tikka Wrap", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Ginger Tea", { exact: true })).toBeVisible();
+  await expect(page.getByText("Mint Wrap", { exact: true })).toHaveCount(0);
 
   await page.evaluate(() => {
     const key = "campusbite.preview.v1";
@@ -111,15 +111,15 @@ test("laptop shoppers can browse and check out using the desktop layout", async 
   await expect(page.getByText(/first-year B.Tech Computer Science and Engineering student/)).toBeVisible();
   await navigation.getByRole("link", { name: "Order Online" }).click();
   await expect(page.getByRole("heading", { name: "Choose a vendor (3)" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add Paneer Tikka Wrap" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Add Mint Wrap" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Categories" })).toBeVisible();
   await page.getByRole("button", { name: "Wraps", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Choose a vendor (1)" })).toBeVisible();
-  await page.getByRole("link", { name: /The Rolling Kitchen/ }).click();
+  await page.getByRole("link", { name: /Campus Wraps/ }).click();
   const bag = page.getByRole("complementary", { name: "Bag summary" });
-  await page.getByRole("button", { name: "Add Paneer Tikka Wrap" }).click();
+  await page.getByRole("button", { name: "Add Mint Wrap" }).click();
   await expect(header.getByRole("link", { name: "Cart, 1 item" })).toBeVisible();
-  await expect(bag.getByText("1 × Paneer Tikka Wrap")).toBeVisible();
+  await expect(bag.getByText("1 × Mint Wrap")).toBeVisible();
   await bag.getByRole("link", { name: "View bag" }).click();
   await page.getByRole("link", { name: "Choose pickup time" }).click();
   await page.getByRole("radio").first().check();
@@ -132,9 +132,9 @@ test("food court selection filters vendors and persists across pages", async ({ 
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/");
   const slider = page.getByRole("region", { name: "Featured campus vendors" });
-  await expect(slider.getByText("The Rolling Kitchen")).toBeVisible();
+  await expect(slider.getByText("Campus Wraps")).toBeVisible();
   await slider.getByRole("button", { name: "Next vendor" }).click();
-  await expect(slider.getByText("Chai & Co")).toBeVisible();
+  await expect(slider.getByText("Courtyard Tea")).toBeVisible();
 
   const select = page.getByRole("banner").getByRole("button", { name: /Select Food Court/ });
   await select.click();
@@ -168,4 +168,18 @@ test("mobile navigation restores the Stitch dock and puts About under Account", 
   await nav.getByRole("link", { name: "Account" }).click();
   await page.getByRole("link", { name: "About CampusBite" }).click();
   await expect(page.getByRole("heading", { name: "About CampusBite" })).toBeVisible();
+});
+
+test("guests see verified vendors and cannot open seeded or unverified listings", async ({ page }) => {
+  for (const path of ["/", "/court", "/order-online"]) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { name: "Campus Wraps" })).toBeVisible();
+    await expect(page.getByText(/The Rolling Kitchen|Chai & Co|Punjab Plate|Unclaimed Kitchen/)).toHaveCount(0);
+  }
+  for (const slug of ["rolling-kitchen", "chai-co", "punjab-plate", "unclaimed"]) {
+    await page.goto("/stalls/" + slug);
+    await expect(page.getByRole("heading", { name: "Stall unavailable" })).toBeVisible();
+  }
+  await page.goto("/products/paneer");
+  await expect(page.getByRole("heading", { name: "Item unavailable" })).toBeVisible();
 });

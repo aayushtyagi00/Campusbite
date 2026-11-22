@@ -53,7 +53,7 @@ function ProfileMenu({ selectCourt }: { selectCourt: () => void }) {
   </details>;
 }
 
-export function StudentShell({ children, storefronts }: { children: React.ReactNode; storefronts?: { stalls: Stall[]; products: Product[] } }) {
+export function StudentShell({ children, storefronts }: { children: React.ReactNode; storefronts: { stalls: Stall[]; products: Product[]; live: boolean } }) {
   return <LiveStorefronts.Provider value={storefronts}><StudentNavigation>{children}</StudentNavigation></LiveStorefronts.Provider>;
 }
 

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
 import {
-  basketLimit, defaultFoodCourt, isOrderable, products, stalls,
+  basketLimit, defaultFoodCourt, isOrderable,
   type CartLine, type FoodCourtId, type Fulfillment, type Order, type Product, type Stall,
 } from "./campus";
 
@@ -15,7 +15,7 @@ type Preview = {
 };
 const key = "campusbite.preview.v1";
 const empty: Preview = {
-  cart: [], stalls, products, orders: [],
+  cart: [], stalls: [], products: [], orders: [],
   orderingPaused: false, started: 0, campusStart: 0, checkout: { start: 0, note: "" }, foodCourt: defaultFoodCourt,
 };
 const listeners = new Set<() => void>();
@@ -51,11 +51,13 @@ function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
 }
-export const LiveStorefronts = createContext<{ stalls: Stall[]; products: Product[] } | undefined>(undefined);
+export const LiveStorefronts = createContext<Pick<Preview, "stalls" | "products" | "live">>({
+  stalls: [], products: [], live: false,
+});
 export function usePreview() {
   const data = useSyncExternalStore(subscribe, () => snapshot, () => empty);
   const storefronts = useContext(LiveStorefronts);
-  return storefronts ? { ...data, ...storefronts, live: true, orderingPaused: false } : data;
+  return { ...data, ...storefronts };
 }
 export const usePreviewReady = () => useSyncExternalStore(subscribe, () => true, () => false);
 export function previewTime(data: Preview, now: number) {

@@ -23,8 +23,16 @@ export function catalogProduct({ stall_slug, sold_out, stock_remaining, ...item 
 const activeStorefronts = unstable_cache(async (_project: string) => {
   const db = commerceDb();
   const [storefronts, menu] = await Promise.all([
-    db.from("commerce_stalls").select("slug,display_name,location,cuisine,court,photo,opens,closes,capacity,enabled,vendor_paused,closed_dates,basket_limit,weekly_hours,pickup_minutes")
-      .eq("published", true).eq("standing", "approved").order("display_name"),
+    db.from("commerce_stalls").select(`
+      slug,display_name,location,cuisine,court,photo,opens,closes,capacity,enabled,
+      vendor_paused,closed_dates,basket_limit,weekly_hours,pickup_minutes,
+      vendor_shops!inner(id,vendor_applications!inner(id))
+    `)
+      .eq("published", true).eq("standing", "approved")
+      .eq("vendor_shops.vendor_applications.status", "approved")
+      .not("vendor_shops.vendor_applications.applicant_id", "is", null)
+      .not("vendor_shops.vendor_applications.verified_at", "is", null)
+      .order("display_name"),
     db.from("commerce_menu").select("id,stall_slug,name,category,description,price,prep,diet,photo,sold_out,stock_remaining").eq("archived", false).order("name"),
   ]);
   if (storefronts.error || menu.error) throw new Error("Catalog is unavailable");
