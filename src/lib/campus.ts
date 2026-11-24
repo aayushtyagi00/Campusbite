@@ -4,7 +4,8 @@ export const foodCourts = [
   { id: "block-41", name: "Near Block 41" },
   { id: "boys-hostel-5-6", name: "Near Boys' Hostel 5-6" },
 ] as const;
-export type FoodCourtId = (typeof foodCourts)[number]["id"];
+export type FoodCourt = {id:string;name:string};
+export type FoodCourtId = string;
 export const defaultFoodCourt = foodCourts[0].id;
 
 export const weekdays = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"] as const;
@@ -19,7 +20,7 @@ export function hoursOn(day: Weekday, defaults: Hours, weekly?: WeeklyHours): Ho
 export type Stall = {
   id: string; name: string; location: string; cuisine: string; photo: string;
   foodCourt?: FoodCourtId; weeklyHours?: WeeklyHours; pickupMinutes?: number;
-  opening: string; closing: string; capacity: number; paused: boolean; closedDates?: string[]; basketLimit?: number;
+  opening: string; closing: string; capacity: number; paused: boolean; holdingMinutes?: number | null; closedDates?: string[]; basketLimit?: number;
   approval: "Draft" | "Submitted" | "Under review" | "Approved" | "Changes requested" | "Rejected" | "Suspended";
 };
 
@@ -32,7 +33,7 @@ export type Product = {
 };
 export type CartLine = { id: string; qty: number; unitPrice?: number };
 export type PickupSlot = { start: number; end: number };
-export type Fulfillment = "awaiting" | "accepted" | "preparing" | "ready" | "collected" | "rejected" | "expired" | "cancelled";
+export type Fulfillment = "awaiting" | "accepted" | "preparing" | "ready" | "collected" | "uncollected" | "rejected" | "expired" | "cancelled";
 export type Order = {
   id: string; stall: string; name: string; location: string; items: { name: string; price: number; qty: number }[];
   student: string; total: number; note: string; slot: PickupSlot; placed: number; deadline: number;
@@ -44,7 +45,7 @@ export const categories: string[] = ["Meals", "Wraps", "Drinks", "Snacks"];
 export const basketLimit = 8;
 export const statuses: Record<Fulfillment, string> = {
   awaiting: "Awaiting acceptance", accepted: "Accepted", preparing: "Preparing", ready: "Ready for pickup",
-  collected: "Collected", rejected: "Rejected", expired: "Expired", cancelled: "Cancelled",
+  collected: "Collected", uncollected: "Uncollected", rejected: "Rejected", expired: "Expired", cancelled: "Cancelled",
 };
 
 export const money = (paise: number) => new Intl.NumberFormat("en-IN", {
@@ -85,19 +86,20 @@ export function pickupSlots(
   if (units > (stall.basketLimit ?? basketLimit)) return [];
 
   const slots: PickupSlot[] = [];
-  for (const campusDate of new Set([date.format(now), date.format(latest)])) {
+  for (const campusDate of new Set([date.format(now - 86400000), date.format(now), date.format(latest)])) {
     if (stall.closedDates?.includes(campusDate)) continue;
     const dayIndex = (new Date(campusDate+"T00:00:00Z").getUTCDay()+6)%7;
     const hours = hoursOn(weekdays[dayIndex], {opens:stall.opening, closes:stall.closing}, stall.weeklyHours);
     if (!hours) continue;
     const open = Date.parse(`${campusDate}T${hours.opens}:00+05:30`);
-    const close = Date.parse(`${campusDate}T${hours.closes}:00+05:30`);
+    const close = Date.parse(`${campusDate}T${hours.closes}:00+05:30`) + (hours.closes < hours.opens ? 86400000 : 0);
     const first = open + Math.max(0, Math.ceil((earliest-open)/interval)) * interval;
     for (let start = first; start <= latest && start + interval <= close; start += interval) {
       const committed = orders.filter(order => order.stall === stall.id && order.slot.start < start+interval && order.slot.end > start &&
         !["cancelled","expired","rejected"].includes(order.status) && !(order.status === "awaiting" && order.deadline <= deadlineNow)).length;
-      if (committed < stall.capacity) slots.push({start, end:start+interval});
+      if (committed < stall.capacity && !stall.closedDates?.includes(date.format(start)) &&
+        !stall.closedDates?.includes(date.format(start+interval-1)) && !slots.some(slot => slot.start === start)) slots.push({start, end:start+interval});
     }
   }
-  return slots;
+  return slots.sort((a,b) => a.start-b.start);
 }

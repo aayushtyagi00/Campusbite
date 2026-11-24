@@ -1,4 +1,5 @@
 "use client";
+import { PushControl } from "./push-control";
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
@@ -33,6 +34,7 @@ export function LiveStudentAccount({ section, email, profile, returnTo, googleEr
     void run(step, new FormData(event.currentTarget));
   }
   if (section === "account") return <div className="narrow">
+    {email && <PushControl audience="student" />}
     <h1>Your account</h1>
     <section className="panel panel-pad stack">
       {email ? <><p>{email}</p>{profile && <form className="stack" onSubmit={async event => {

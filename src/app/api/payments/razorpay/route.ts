@@ -1,5 +1,6 @@
 import { commerceDb } from "@/lib/commerce";
-import { paymentSettings, providerOrder, providerPayment, razorpay, signed, verifiedCapture } from "@/lib/razorpay";
+import { processPaymentWebhook } from "@/lib/payment-webhook";
+import { paymentSettings, providerOrder, providerPayment, signed } from "@/lib/razorpay";
 import { liveCommerce } from "@/lib/student-auth";
 
 const maxBytes = 262_144;
@@ -51,30 +52,13 @@ export async function POST(request: Request) {
     const settings = await paymentSettings();
     if (!settings) return new Response(null, { status: 503 });
     const db = commerceDb();
-    if (capture) {
-      const { data: order, error } = await db.from("commerce_orders").select("provider_payment,amount_paise")
-        .eq("provider_order", entity.order_id).maybeSingle();
-      if (error) throw error;
-      if (!order) {
-        // An admin test may use the same Test Mode merchant as a staging site.
-        const provider = settings.mode === "test" ? await razorpay("/orders/" + entity.order_id) : null;
-        if (provider?.id === entity.order_id && /^cbtest_[a-f0-9]{32}$/.test(provider.receipt))
-          return new Response(null, { status: 204 });
-        throw new Error("Unmatched capture");
-      }
-      if (order.amount_paise !== entity.amount) throw new Error("Unmatched amount");
-      if (order.provider_payment !== payment && !await verifiedCapture(entity.order_id, payment, order.amount_paise))
-        throw new Error("Unconfirmed capture");
-    } else {
-      const refund = await razorpay("/refunds/" + entity.id);
-      if (refund.id !== entity.id || refund.payment_id !== payment || refund.amount !== entity.amount ||
-        refund.currency !== "INR" || refund.status !== "processed") throw new Error("Unconfirmed refund");
-    }
-    const result = await db.rpc("commerce_apply_razorpay_event", {
-      event_id: "webhook:" + eventId, kind, payment_id: payment, gateway_order: capture ? entity.order_id : null,
-      amount: entity.amount, currency: "INR", key_mode: settings.mode,
-    });
-    if (result.error || result.data !== true) throw new Error("Event requires reconciliation");
+    const entry={event_id:"webhook:"+eventId, kind, payment, gateway_order:capture ? entity.order_id : null,
+      refund_id:capture ? null : entity.id,amount:entity.amount,mode:settings.mode};
+    const saved=await db.from("payment_webhook_queue").upsert(entry,{onConflict:"event_id",ignoreDuplicates:true});
+    if (saved.error) throw saved.error;
+    const stored=await db.from("payment_webhook_queue").select("*").eq("event_id",entry.event_id).single();
+    if (stored.error) throw stored.error;
+    if (!stored.data.completed_at && !await processPaymentWebhook(stored.data)) return new Response(null,{status:202});
     return new Response(null, { status: 204 });
   } catch {
     return new Response(null, { status: 503 });

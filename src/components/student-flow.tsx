@@ -17,7 +17,7 @@ type PaymentResponse = { razorpay_payment_id: string; razorpay_signature: string
 type RazorpayCheckout = new (options: {
   key: string; order_id: string; amount: number; currency: string; name: string;
   handler: (payment: PaymentResponse) => void; modal: { ondismiss: () => void };
-}) => { open: () => void };
+}) => { open: () => void; on?: (event:"payment.failed",handler:()=>void)=>void };
 const liveCheckoutKey = "campusbite.checkout.request";
 
 function savedCheckoutRequest(basket: string) {
@@ -95,6 +95,7 @@ export function Checkout({ checkout = false, history }: { checkout?: boolean; hi
           <section className="panel panel-pad stack">
             <h2 className="row"><CalendarClock size={22} /> Pickup window</h2>
             <p>Choose a pickup window. Times are shown in IST.</p>
+            {stall.holdingMinutes && <p>This stall holds ready orders for {stall.holdingMinutes} minutes after the pickup window ends, or after preparation finishes if later.</p>}
             {live && <button className="text-link" type="button" onClick={()=>setRefresh(n=>n+1)}>Refresh availability</button>}
             {slots.length ? <fieldset className="slot-grid"><legend className="sr-only">Available pickup windows</legend>{slots.map(slot =>
               <label className="slot-option" key={slot.start}><input type="radio" name="pickup" checked={selected === slot.start} onChange={() => { updateCheckout({ start: slot.start }); setError(""); }} />{slotLabel(slot)}</label>)}</fieldset> :
@@ -143,6 +144,7 @@ export function Checkout({ checkout = false, history }: { checkout?: boolean; hi
                             }).catch(reject);
                         },
                       });
+                      checkout.on?.("payment.failed",()=>setError("Razorpay reported a failed payment attempt. Check My Orders before trying again."));
                       checkout.open();
                     });
                   }
@@ -203,7 +205,7 @@ export function StudentOrders({ history }: { history: StudentOrderHistory }) {
   if (!order) return <div className="narrow order-history"><div className="page-heading"><h1>Your orders</h1><p>Track pickups and refund requests.</p></div>
     {notices}{!orders.length && <Empty title="No orders yet"><Link className="button" href="/">Explore campus stalls</Link></Empty>}
     <div className="stack order-history-grid">{orders.map(item => <button type="button" className="panel panel-pad stack order-card" key={item.id} onClick={() => select(item.id)}>
-      <div className="row between"><strong>{item.name}</strong><Status tone="good">{item.status === "unpaid" ? "Payment pending" : statuses[visibleStatus({ status: item.status, deadline: item.deadline }, now)]}</Status></div>
+      <div className="row between"><strong>{item.name}</strong><Status tone="good">{item.status === "unpaid" ? (item.payment==="Failed" ? "Payment failed" : "Payment pending") : statuses[visibleStatus({ status: item.status, deadline: item.deadline }, now)]}</Status></div>
       <div className="row between"><span>{displayReference(item.id)} · {dateLabel(item.placed)}</span><strong>{money(item.total)}</strong></div>
     </button>)}</div></div>;
   return <>{notices}<StudentOrderDetails key={order.id} order={order} now={now} close={() => select(null)} /></>;
@@ -221,13 +223,13 @@ function StudentOrderDetails({ order, now, close }: { order: StudentOrder; now: 
   const seconds = now ? Math.max(0, Math.ceil((order.deadline - now) / 1000)) : 90;
   const refund = status === "expired" && order.payment === "Verified" && order.refund === "None" ? "Requested" : order.refund;
   return <div className="narrow transaction-page"><button type="button" className="back" onClick={close}><ArrowLeft size={17} /> Your orders</button>
-    <div className="page-heading"><p className="eyebrow">{displayReference(order.id)}</p><h1>{status === "unpaid" ? "Payment pending" : statuses[status]}</h1><p>{order.name}</p></div>
+    <div className="page-heading"><p className="eyebrow">{displayReference(order.id)}</p><h1>{status === "unpaid" ? (order.payment==="Failed" ? "Payment failed" : "Payment pending") : statuses[status]}</h1><p>{order.name}</p></div>
     <div className="transaction-layout">
       <div className="transaction-column">
         <section className={`panel panel-pad stack ${status === "ready" ? "ready-panel" : ""}`}>
           <h2 className="row"><MapPin size={21} />{order.location}</h2>
           <p className="row"><Clock3 size={18} />{dateLabel(order.slot.start)} · {slotLabel(order.slot)} IST</p>
-          {status === "unpaid" && <p>Waiting for payment confirmation from Razorpay.</p>}
+          {status === "unpaid" && <p>{order.payment==="Failed" ? "Your most recent payment attempt failed. Return to checkout to try again." : "Waiting for payment confirmation from Razorpay."}</p>}
           {status === "awaiting" && <><p>Payment verified. The stall has <strong>{seconds}s</strong> to accept your order.</p>
             <button className="button secondary" disabled={cancelling} onClick={async () => {
               if (!window.confirm("Cancel this order and request a full refund?")) return;
@@ -239,10 +241,12 @@ function StudentOrderDetails({ order, now, close }: { order: StudentOrder; now: 
               } catch { setError("This order could not be cancelled."); }
               finally { setCancelling(false); }
             }}>Cancel order</button></>}
-          {status === "ready" && <div className="pickup-code"><PackageCheck size={26} /><strong>{order.code}</strong><p>Show this six-digit code at the stall.</p></div>}
+          {order.code && ["accepted","preparing","ready"].includes(status) && <div className="pickup-code"><PackageCheck size={26} /><strong>{order.code}</strong><p>Show this six-digit code when you collect your food.</p></div>}
           {status === "rejected" && order.rejection_reason && <p>Reason from the stall · {order.rejection_reason}</p>}
           {status === "accepted" && <p>The stall has accepted your order. Check back for preparation updates.</p>}
           {status === "preparing" && <p>The stall is preparing your meal.</p>}
+          {status === "ready" && order.holdingUntil && <p>Collect by {dateLabel(Date.parse(order.holdingUntil))} {clockTime(Date.parse(order.holdingUntil))} IST.</p>}
+          {status === "uncollected" && <p>The holding time ended. Contact support below if you need help.</p>}
           {status === "collected" && <p className="row"><Check size={18} /> Pickup complete</p>}
           {error && <Notice>{error}</Notice>}
         </section>
@@ -256,6 +260,7 @@ function StudentOrderDetails({ order, now, close }: { order: StudentOrder; now: 
       <div className="transaction-column">
         <section className="panel panel-pad stack"><h2>Activity</h2>{order.events.map((event, index) => <div className="row between" key={index}><span>{event.status}</span><time>{clockTime(event.at)}</time></div>)}</section>
         <SupportForm id={order.id} support={order.support} />
+        {order.support_reply && <section className="panel panel-pad"><h2>Support reply · {order.support_state}</h2><p>{order.support_reply}</p></section>}
       </div>
     </div>
   </div>;

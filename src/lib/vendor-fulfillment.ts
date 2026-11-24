@@ -32,7 +32,7 @@ export async function saveAvailability(shop: string, revision: number, _: FormSt
   const opening = field(form,"opening"), closing = field(form,"closing");
   const slots = Number(field(form,"slots")), basket = Number(field(form,"basket"));
   const closures = [...new Set(field(form,"closures").split(/[,\s]+/).filter(Boolean))];
-  if (!/^\d{2}:\d{2}$/.test(opening) || !/^\d{2}:\d{2}$/.test(closing) || opening >= closing ||
+  if (!/^\d{2}:\d{2}$/.test(opening) || !/^\d{2}:\d{2}$/.test(closing) || opening === closing ||
     !Number.isInteger(slots) || slots < 1 || slots > 100 || !Number.isInteger(basket) || basket < 1 || basket > 8)
     return failure("Check the opening hours, pickup capacity and basket size.");
   if (closures.length > 90 || closures.some(day => !/^\d{4}-\d{2}-\d{2}$/.test(day) ||
@@ -47,7 +47,7 @@ export async function saveAvailability(shop: string, revision: number, _: FormSt
     if (mode === "regular") continue;
     if (mode === "closed") { weekly[day] = null; continue; }
     const opens = field(form,day+"-opens"), closes = field(form,day+"-closes");
-    if (mode !== "custom" || !validTime.test(opens) || !validTime.test(closes) || opens >= closes)
+    if (mode !== "custom" || !validTime.test(opens) || !validTime.test(closes) || opens === closes)
       return failure("Check the opening and closing times for "+day+".");
     weekly[day] = {opens,closes};
   }
@@ -56,6 +56,18 @@ export async function saveAvailability(shop: string, revision: number, _: FormSt
   if (result.error) return failure("Could not save availability. Reload to check the latest settings and your shop access.");
   refreshCatalog("availability");
   return { message: "Availability saved." };
+}
+
+export async function savePickupPolicy(shop:string, revision:number, _:FormState, form:FormData) {
+  const session=await staffSession(true);
+  if (!session) return failure("Sign in again.");
+  const value=(name:string)=>Number(field(form,name));
+  const {error}=await session.client.rpc("vendor_set_pickup_policy",{target_shop:shop,expected_revision:revision,
+    advance:value("advance"),acceptance:value("acceptance"),buffer:value("buffer"),cutoff:value("cutoff"),
+    holding:field(form,"holding") ? value("holding") : null});
+  if (error) return failure("Check the allowed ranges and reload the latest shop settings.");
+  refreshCatalog("availability");
+  return {message:"Pickup timing saved."};
 }
 
 export async function saveCategory(shop: string, previous: string, _: FormState, form: FormData) {

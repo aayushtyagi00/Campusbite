@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { randomUUID } from "node:crypto";
-import { foodCourts, categories } from "@/lib/campus";
-import { orderUuid } from "@/lib/commerce";
+import { categories } from "@/lib/campus";
+import { orderUuid, campusCourts } from "@/lib/commerce";
 import type { adminSession } from "@/lib/staff/access";
 import { applicationStatuses, type VendorApplication, type Storefront, type VendorShop } from "@/lib/staff/database";
 import { saveStorefront, addOnboardingItem, reviewApplication } from "@/lib/onboarding-actions";
@@ -36,7 +36,7 @@ export async function CurrentVendors({ client, page }: { client: Client; page: n
     </div>}</>;
 }
 
-function ProfileForm({ shop, listing: s, application: a, unlinked }: { shop: VendorShop; listing: Storefront | null; application: VendorApplication | null; unlinked: string[] }) {
+async function ProfileForm({ shop, listing: s, application: a, unlinked }: { shop: VendorShop; listing: Storefront | null; application: VendorApplication | null; unlinked: string[] }) {
   const suggested = shop.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 70) || "stall-" + shop.id.slice(0, 8);
   return <section className="panel panel-pad stack"><h2>Storefront and payments</h2>
     <StaffForm action={saveStorefront.bind(null, shop.id, s?.revision ?? -1)} label="Save storefront">
@@ -46,7 +46,7 @@ function ProfileForm({ shop, listing: s, application: a, unlinked }: { shop: Ven
         <datalist id="unlinked-slugs">{unlinked.map(slug => <option key={slug} value={slug} />)}</datalist>
         <label className="field">Public stall name<input name="display_name" defaultValue={s?.display_name || a?.shop_name || shop.name} required maxLength={100} /></label>
         <label className="field">Food court<select name="court" defaultValue={s?.court || a?.court || ""} required><option value="">Choose a court</option>
-          {foodCourts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+          {(await campusCourts()).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
         <label className="field">Exact location<input name="location" defaultValue={s?.location || a?.location} required maxLength={150} /></label>
         <label className="field">Cuisine<input name="cuisine" defaultValue={s?.cuisine || a?.cuisine} required maxLength={120} /></label>
         <label className="field">Orders per pickup window<input type="number" name="capacity" defaultValue={s?.capacity ?? 5} min={1} max={100} required /></label>

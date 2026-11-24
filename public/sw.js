@@ -1,6 +1,17 @@
 const offlineCache = "campusbite-offline-v1";
 const offlinePage = "/offline.html";
 
+self.addEventListener("push", event => {
+  if (!event.data) return;
+  const {body,audience}=event.data.json();
+  const path=audience==="vendor"?"/vendor/board":audience==="admin"?"/admin/orders":"/orders";
+  event.waitUntil(self.registration.showNotification("CampusBite",{body,data:{path}}));
+});
+self.addEventListener("notificationclick",event=>{
+  event.notification.close();
+  event.waitUntil(clients.openWindow(event.notification.data?.path || "/orders"));
+});
+
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(offlineCache).then(cache => cache.add(offlinePage)));
 });

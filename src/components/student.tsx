@@ -10,6 +10,7 @@ import { Checkout, StudentOrders } from "./student-flow";
 import type { StudentOrderHistory } from "@/lib/student-order-types";
 import { Quantity } from "./quantity";
 import { CampusReviews } from "./campus-reviews";
+import { usePickupAvailability } from "./use-pickup-availability";
 import { HomeGuide } from "./home-guide";
 
 export function StudentPage({ section, id, history }: { section: string; id?: string; history?: StudentOrderHistory }) {
@@ -31,7 +32,7 @@ function Explore({ section }: { section: string }) {
   const [category, setCategory] = useState("All");
   const home = section === "home";
   const court = section === "court";
-  const selectedCourt = foodCourts.find(item => item.id === data.foodCourt) ?? foodCourts[0];
+  const selectedCourt = (data.courts ?? foodCourts).find(item => item.id === data.foodCourt) ?? foodCourts[0];
   const courtVendors = stallsAtCourt(data.stalls, selectedCourt.id);
   const availableCategories = [...new Set(data.products.filter(item => !item.archived && courtVendors.some(shop=>shop.id===item.stall)).map(item=>item.category))].sort();
   const selectedCategory = availableCategories.includes(category) ? category : "All";
@@ -135,7 +136,8 @@ function StallCard({ stall, now }: { stall: Stall; now: number }) {
   const data = usePreview();
   const menu = data.products.filter(item => item.stall === stall.id && !item.archived && !item.soldOut);
   const fastest = menu.reduce<Product | undefined>((item, candidate) => !item || candidate.prep < item.prep ? candidate : item, undefined);
-  const firstSlot = now && fastest && !data.orderingPaused ? pickupSlots(stall, [{ prep: fastest.prep, qty: 1 }], data.orders, now)[0] : undefined;
+  const quote = usePickupAvailability(data.live && fastest && !stall.paused ? JSON.stringify({stall:stall.id,items:[{id:fastest.id,qty:1,price:fastest.price}]}) : null,0);
+  const firstSlot = data.live ? quote?.slots.find(slot => slot.start > now) : now && fastest && !data.orderingPaused ? pickupSlots(stall, [{ prep: fastest.prep, qty: 1 }], data.orders, now)[0] : undefined;
   const price = menu.length ? Math.min(...menu.map(item => item.price)) : null;
   return <Link className="stall-card" href={`/stalls/${stall.id}`}>
     <div className="stall-image"><Photo name={stall.photo} /><span className="stall-location">{stall.location.split(" · ")[0]}</span>
@@ -165,8 +167,8 @@ function Menu({ id }: { id?: string }) {
         {Object.keys(stall.weeklyHours ?? {}).length ? <details><summary className="text-link">Weekly hours (IST)</summary>
           <dl className="vendor-facts">{weekdays.map(day=>{
             const hours = hoursOn(day,{opens:stall.opening,closes:stall.closing},stall.weeklyHours);
-            return <div key={day}><dt>{day}</dt><dd>{hours ? hours.opens+"–"+hours.closes : "Closed"}</dd></div>;
-          })}</dl></details> : <p className="row"><Clock3 size={18} />{stall.opening}–{stall.closing} IST</p>}
+            return <div key={day}><dt>{day}</dt><dd>{hours ? hours.opens+"–"+hours.closes+(hours.closes<hours.opens?" (next day)":"") : "Closed"}</dd></div>;
+          })}</dl></details> : <p className="row"><Clock3 size={18} />{stall.opening}–{stall.closing} IST{stall.closing<stall.opening?" (next day)":""}</p>}
         <Status tone={isOrderable(stall) && !data.orderingPaused ? "good" : "warn"}>{isOrderable(stall) && !data.orderingPaused ? "Scheduled pickup" : "Ordering paused"}</Status>
       </div>
     </section>

@@ -1,6 +1,10 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { clearDeviceAlerts } from "./push-device";
+import { allowAttempt } from "./staff/access";
+import { staffService } from "./staff/supabase";
+import { commerceDb } from "./commerce";
 import { redirect } from "next/navigation";
 import { studentClient, studentReturnCookie, studentSettings } from "./student-auth";
 
@@ -13,6 +17,12 @@ export async function saveStudentProfile(form: FormData) {
   if (!user?.email || user.is_anonymous) return { error: "Sign in to update your account." };
   const { error } = await client.auth.updateUser({ data: { campusbite_name: name,
     campusbite_order_alerts: form.get("orderAlerts") === "on", campusbite_refund_alerts: form.get("refundAlerts") === "on" } });
+  if (!error && process.env.VAPID_PRIVATE_KEY) {
+    const sync = await commerceDb().from("push_subscriptions").update({
+      order_alerts: form.has("orderAlerts"), refund_alerts: form.has("refundAlerts"),
+    }).eq("student_id", user.id);
+    if (sync.error) return { error: "Profile saved. Save again to sync device notifications." };
+  }
   return error ? { error: "Your changes could not be saved. Please try again." } : { saved: true };
 }
 
@@ -22,6 +32,7 @@ export async function studentAuth(operation: "sign-in" | "sign-up" | "confirm" |
   if (!client || !settings) return { error: "Student authentication is temporarily unavailable." };
   const destination = form.get("returnTo") === "checkout" ? "/checkout" : "/account";
   if (operation === "sign-out") {
+    try { await clearDeviceAlerts("student"); } catch { /* Sign-out must remain available if the notification database is offline. */ }
     const { error } = await client.auth.signOut({ scope: "local" });
     if (error) return { error: "Could not sign out. Please try again." };
     redirect("/sign-in");
@@ -41,6 +52,10 @@ export async function studentAuth(operation: "sign-in" | "sign-up" | "confirm" |
   const password = String(form.get("password") ?? "");
   const token = String(form.get("code") ?? "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return { error: "Enter a valid email address." };
+  const service=staffService();
+  const limit=operation==="sign-up" ? 5 : 15;
+  if (!service || !await allowAttempt(service,"student-"+operation,email,limit,900))
+    return {error:"Please wait before trying again."};
   if (operation === "confirm") {
     if (!/^\d{6,10}$/.test(token)) return { error: "Enter the code from your email." };
     const { error } = await client.auth.verifyOtp({ email, token, type: "email" });

@@ -6,7 +6,7 @@ import { NavigationHint } from "./navigation-hint";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { cartItems, LiveStorefronts, update, usePreview, usePreviewReady } from "@/lib/preview";
-import { foodCourts, money, type Product, type Stall } from "@/lib/campus";
+import { foodCourts, money, type Product, type Stall, type FoodCourt } from "@/lib/campus";
 import { Brand } from "./ui";
 import { StudentFooter } from "./student-footer";
 
@@ -53,7 +53,7 @@ function ProfileMenu({ selectCourt }: { selectCourt: () => void }) {
   </details>;
 }
 
-export function StudentShell({ children, storefronts }: { children: React.ReactNode; storefronts: { stalls: Stall[]; products: Product[]; live: boolean } }) {
+export function StudentShell({ children, storefronts }: { children: React.ReactNode; storefronts: { stalls: Stall[]; products: Product[]; courts?: readonly FoodCourt[]; live: boolean } }) {
   return <LiveStorefronts.Provider value={storefronts}><StudentNavigation>{children}</StudentNavigation></LiveStorefronts.Provider>;
 }
 
@@ -63,7 +63,8 @@ function StudentNavigation({ children }: { children: React.ReactNode }) {
   const ready = usePreviewReady();
   const courtDialog = useRef<HTMLDialogElement>(null);
   const courtTrigger = useRef<HTMLButtonElement>(null);
-  const currentCourt = foodCourts.find(court => court.id === data.foodCourt) ?? foodCourts[0];
+  const courts=data.courts ?? foodCourts;
+  const currentCourt = courts.find(court => court.id === data.foodCourt) ?? foodCourts[0];
   function selectCourt() { courtDialog.current?.showModal(); }
   const items = cartItems(data);
   const count = items.reduce((sum, item) => sum + item.qty, 0);
@@ -94,7 +95,7 @@ function StudentNavigation({ children }: { children: React.ReactNode }) {
       </div>
       <p>Choose where you’d like to pick up your order.</p>
       <ul className="court-options">
-        {foodCourts.map(court => <li key={court.id}><button type="button"
+        {courts.map(court => <li key={court.id}><button type="button"
           aria-pressed={court.id === currentCourt.id} onClick={() => {
             update(current => ({ ...current, foodCourt: court.id }));
             courtDialog.current?.close();

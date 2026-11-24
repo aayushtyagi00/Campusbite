@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { clearDeviceAlerts } from "../push-device";
 import { adminSession, allowAttempt, invited, invitedUser, isStaffArea, staffDashboard } from "./access";
 import { clearStaffCookies, clearStaffOAuthCookies, staffAuthAttempt, staffClient, staffOAuthAreaCookie, staffOAuthCookieName, staffOrigin, staffService, staffSession } from "./supabase";
 import { vendorRoles, type StaffArea, type VendorRole } from "./database";
@@ -184,6 +185,7 @@ export async function editTeamMember(area: StaffArea, operation: "add" | "change
 }
 
 export async function staffSignOut() {
+  try { await clearDeviceAlerts("staff"); } catch { /* Staff can still end their session while the notification database is offline. */ }
   const client = await staffClient(true);
   try {
     if (client) await client.auth.signOut({ scope: "local" });

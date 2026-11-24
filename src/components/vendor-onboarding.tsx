@@ -2,18 +2,17 @@ import Link from "next/link";
 import { randomUUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 import { applicantSession } from "@/lib/vendor-applicant";
-import { orderUuid } from "@/lib/commerce";
+import { orderUuid, campusCourts } from "@/lib/commerce";
 import { applicationStatuses, type VendorApplication } from "@/lib/staff/database";
-import { foodCourts } from "@/lib/campus";
 import { changeDocument } from "@/lib/onboarding-actions";
 import { ApplicationEditor } from "./application-editor";
 import { StaffForm } from "./staff-forms";
 import { Back, Empty, Notice, Status } from "./ui";
 
-export function ApplicationDetails({ application: a }: { application: VendorApplication }) {
+export async function ApplicationDetails({ application: a }: { application: VendorApplication }) {
   const details = [
     ["Contact", a.contact_name], ["Contact email", a.email], ["Phone", a.phone],
-    ["Food court", foodCourts.find(c => c.id === a.court)?.name], ["Stall location", a.location], ["Cuisine", a.cuisine],
+    ["Food court", (await campusCourts()).find(c => c.id === a.court)?.name], ["Stall location", a.location], ["Cuisine", a.cuisine],
     ["Hours (IST)", a.opens && a.closes && a.opens.slice(0, 5) + " – " + a.closes.slice(0, 5)],
     ["Business description", a.description], ["Food registration", a.registration],
     ["Vendor agreement", a.agreed_at && a.agreement_version + " · " + new Date(a.agreed_at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })],
@@ -61,7 +60,7 @@ export async function VendorOnboarding({ id, name = "" }: { id?: string; name?: 
     <div className="ops-heading"><div><h1>{a?.shop_name ?? "New application"}</h1><p>{session.email}</p></div>
       {a && <Status>{applicationStatuses[a.status]}</Status>}</div>
     {a?.review_note && <Notice>{a.review_note}</Notice>}
-    {editable ? <ApplicationEditor id={a?.id ?? randomUUID()} application={a} initialName={name.slice(0, 100)} /> :
+    {editable ? <ApplicationEditor courts={await campusCourts()} id={a?.id ?? randomUUID()} application={a} initialName={name.slice(0, 100)} /> :
       a && <section className="panel panel-pad stack"><h2>Application details</h2><ApplicationDetails application={a} />
         {a.shop_id && <p>Payment onboarding · {listing?.error ? "Unavailable" : ({
           verified: "Verified", pending: "In progress", not_started: "Not started", legacy_enabled: "Existing checkout"

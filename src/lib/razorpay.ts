@@ -3,7 +3,7 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { commerceDb } from "./commerce";
 
-export function razorpayMode(key = process.env.RAZORPAY_KEY_ID?.trim()) {
+export function razorpayMode(key = process.env.RAZORPAY_KEY_ID?.trim()): "live" | "test" | null {
   if (/^rzp_test_[A-Za-z0-9]+$/.test(key ?? "")) return "test";
   if (/^rzp_live_[A-Za-z0-9]+$/.test(key ?? "")) return "live";
   return null;

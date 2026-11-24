@@ -8,6 +8,10 @@ import { Notice } from "@/components/ui";
 import { adminSession } from "@/lib/staff/access";
 import { liveCommerce } from "@/lib/student-auth";
 import { CurrentVendors, VendorRecord, ApplicationReview } from "@/components/current-vendors";
+import { AdminMfa } from "@/components/admin-mfa";
+import { staffSession, staffService } from "@/lib/staff/supabase";
+import { invited } from "@/lib/staff/access";
+import { AdminFinance } from "@/components/admin-finance";
 import { RecentCommerceOrders } from "@/components/recent-commerce-orders";
 import { AdminPaymentTest } from "@/components/admin-payment-test";
 import { adminTestCredentials } from "@/lib/razorpay";
@@ -34,6 +38,14 @@ export default async function Page({ params, searchParams }: {
 }) {
   const { screen = [] } = await params;
   const session = await adminSession();
+  if (!session || screen[0]==="security") {
+    const staff=await staffSession();
+    const service=staffService();
+    if (staff && service && await invited(service,"admin",staff.email)) {
+      if (screen[0]==="security") return <main className="narrow transaction-page"><AdminMfa /></main>;
+      if (!session) redirect("/admin/security");
+    }
+  }
   if (screen.length === 1 && screen[0] === "sign-in") {
     if (session) redirect("/admin");
     return <StaffSignIn area="admin" googleError={(await searchParams).error === "google"} />;
@@ -42,8 +54,10 @@ export default async function Page({ params, searchParams }: {
   if (screen.length > 2 || (screen.length === 2 && !["vendors","applications"].includes(screen[0]))) notFound();
   const section = screen[0];
 
-  if (["overview", "refunds", "finance", "settings"].includes(section)) redirect("/admin");
+  if (section==="refunds") redirect("/admin/orders?view=refunds");
+  if (["overview", "settings"].includes(section)) redirect("/admin");
   const { client, email } = session;
+  if (section === "finance") return <OpsShell area="admin" path="/admin/finance" email={email}><AdminFinance page={pageNumber((await searchParams).page)} /></OpsShell>;
   if (section === "payment-test") return <OpsShell area="admin" path="/admin/payment-test" email={email}>
     <AdminPaymentTest configured={Boolean(adminTestCredentials())} />
   </OpsShell>;
@@ -55,11 +69,12 @@ export default async function Page({ params, searchParams }: {
     </OpsShell>;
   }
   if (section === "orders") {
+    const {reference,view} = await searchParams;
     if (!liveCommerce()) redirect("/admin");
     return <OpsShell area="admin" path="/admin/orders" email={email}>
       <h1>Commerce operations</h1>
       <Link className="text-link" href="/admin/vendors">Manage storefronts and pickup capacity</Link>
-      <RecentCommerceOrders />
+      <RecentCommerceOrders reference={typeof reference==="string"?reference:""} view={typeof view==="string"?view:"all"} />
     </OpsShell>;
   }
   if (section === "access") {

@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
 import {
   basketLimit, defaultFoodCourt, isOrderable,
-  type CartLine, type FoodCourtId, type Fulfillment, type Order, type Product, type Stall,
+  type CartLine, type FoodCourt, type FoodCourtId, type Fulfillment, type Order, type Product, type Stall,
 } from "./campus";
 
 type Preview = {
@@ -11,6 +11,7 @@ type Preview = {
   orderingPaused: boolean; started: number; campusStart: number;
   checkout: { start: number; note: string };
   foodCourt: FoodCourtId;
+  courts?: readonly FoodCourt[];
   live?: boolean;
 };
 const key = "campusbite.preview.v1";
@@ -51,7 +52,7 @@ function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
 }
-export const LiveStorefronts = createContext<Pick<Preview, "stalls" | "products" | "live">>({
+export const LiveStorefronts = createContext<Pick<Preview, "stalls" | "products" | "live" | "courts">>({
   stalls: [], products: [], live: false,
 });
 export function usePreview() {

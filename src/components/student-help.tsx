@@ -34,7 +34,7 @@ export function StudentHelp({ section }: { section: keyof typeof pages }) {
       </section>
       <section className="panel panel-pad stack">
         <h2>Common questions</h2>
-        <details><summary>When can I pick up my order?</summary><p>Check the status of your order and head to the stall when it’s marked ready. Your pickup code appears in the order details.</p></details>
+        <details><summary>When can I pick up my order?</summary><p>Check the status of your order and head to the stall when it’s marked ready. Your pickup code appears in the order details after acceptance. If the vendor has set a holding time, the ready order shows the collection deadline.</p></details>
         <details><summary>How do I find the vendor?</summary><p>Check the food court and stall location listed in your order details.</p></details>
         <Link className="text-link" href="/pickup-refunds">Read the pickup and refund guide</Link>
       </section>
@@ -52,6 +52,9 @@ export function StudentHelp({ section }: { section: keyof typeof pages }) {
       </section>
     </>}
     {section === "privacy-policy" && <>
+      <section className="panel panel-pad stack"><h2>Device notifications</h2>
+        <p>Enabling device alerts stores a browser subscription so CampusBite can send order updates. You can disable alerts on this device or revoke notification permission in your browser.</p>
+      </section>
       <section className="panel panel-pad stack">
         <h2>When you sign in with Google</h2>
         <p>Google shares your Google account identifier, email address and basic profile with Supabase, which handles sign-in for CampusBite. Your basic profile can include your name and profile picture. Supabase stores the sign-in details with your CampusBite account so it can recognize you on your next visit.</p>

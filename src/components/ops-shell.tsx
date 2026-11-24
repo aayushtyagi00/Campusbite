@@ -4,6 +4,7 @@ import { NavigationHint } from "./navigation-hint";
 import { staffSignOut } from "@/lib/staff/actions";
 import { liveCommerce } from "@/lib/student-auth";
 import { Brand } from "./ui";
+import { PushControl } from "./push-control";
 
 const links = {
   vendor: [
@@ -14,6 +15,7 @@ const links = {
   admin: [
     ["/admin", "Overview", Gauge], ["/admin/applications", "Vendor applications", ClipboardList],
     ["/admin/vendors", "Current Vendors", Store], ["/admin/access", "Access Management", ShieldCheck],
+    ["/admin/finance","Payment journal",Wallet], ["/admin/security","Authenticator",ShieldCheck],
     ["/admin/payment-test", "Test payment", Wallet],
   ],
 } as const;
@@ -35,6 +37,7 @@ export function OpsShell({ area, path, email, shop, staffOnly, children }: { are
     <main className="ops-main" id="main">
       <div className="staff-identity"><ShieldCheck size={17} aria-hidden="true" /><span>{email}</span></div>
       {children}
+      <PushControl audience={area} shop={shop} />
     </main>
   </div>;
 }

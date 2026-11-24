@@ -3,7 +3,7 @@ import { WeekdayHours } from "./weekday-hours";
 import { weekdays, clockTime, dateLabel, money } from "@/lib/campus";
 import { applicationStatuses, type Storefront } from "@/lib/staff/database";
 import type { staffSession } from "@/lib/staff/supabase";
-import { saveAvailability } from "@/lib/vendor-fulfillment";
+import { saveAvailability, savePickupPolicy } from "@/lib/vendor-fulfillment";
 import { orderUuid } from "@/lib/commerce";
 import { StaffForm } from "./staff-forms";
 import { Notice } from "./ui";
@@ -12,7 +12,7 @@ type Client = NonNullable<Awaited<ReturnType<typeof staffSession>>>["client"];
 
 export function Availability({shop,store}:{shop:string;store:Storefront}) {
   return <section className="panel panel-pad stack ops-form">
-    <h2>Hours and pickup limits</h2><p>Set regular hours in campus time (IST), then choose any weekday exceptions. Pickup windows start at opening and finish by closing.</p>
+    <h2>Hours and pickup limits</h2><p>Set regular hours in campus time (IST), then choose any weekday exceptions. A closing time earlier than opening ends the shift the next day. For half past midnight enter 00:30.</p>
     <StaffForm action={saveAvailability.bind(null,shop,store.revision)} label="Save availability">
       <div className="form-grid">
         <label className="field">Opens at<input type="time" name="opening" required defaultValue={store.opens?.slice(0,5)} /></label>
@@ -26,6 +26,17 @@ export function Availability({shop,store}:{shop:string;store:Storefront}) {
       <label className="field">Closure dates<textarea name="closures" placeholder="YYYY-MM-DD, YYYY-MM-DD" defaultValue={store.closed_dates.join(", ")} /></label>
       <label className="row"><input type="checkbox" name="paused" defaultChecked={store.vendor_paused} /> Pause new orders</label>
       <p className="fineprint">You can still fulfill paid orders while the shop is paused.</p>
+    </StaffForm>
+    <h3>Pickup timing</h3>
+    <StaffForm action={savePickupPolicy.bind(null,shop,store.revision)} label="Save pickup timing">
+      <div className="form-grid">
+        <label className="field">Book ahead (minutes)<input type="number" name="advance" min="15" max="360" required defaultValue={store.advance_minutes ?? 60} /></label>
+        <label className="field">Accept a paid order within (seconds)<input type="number" name="acceptance" min="30" max="300" required defaultValue={store.acceptance_seconds ?? 90} /></label>
+        <label className="field">Extra preparation buffer (minutes)<input type="number" name="buffer" min="0" max="30" required defaultValue={store.buffer_minutes ?? 2} /></label>
+        <label className="field">Finish pickups before closing (minutes)<input type="number" name="cutoff" min="0" max="180" required defaultValue={store.last_pickup_minutes ?? 0} /></label>
+        <label className="field">Hold ready food after the window (minutes)<input type="number" name="holding" min="5" max="240" placeholder="No automatic cutoff" defaultValue={store.holding_minutes ?? ""} /></label>
+      </div>
+      <p>When a holding time is set, new orders become uncollected after that deadline. Refund decisions remain available to support.</p>
     </StaffForm>
   </section>;
 }

@@ -1,7 +1,8 @@
 import type { Order } from "./campus";
 
 export type StudentOrder = Omit<Order, "student" | "status" | "payment"> & {
-  status: Order["status"] | "unpaid"; payment: "Verified" | "Pending"; support?: string; rejection_reason?: string;
+  holdingUntil?: string;
+  status: Order["status"] | "unpaid"; payment: "Verified" | "Pending" | "Failed"; support?: string; support_reply?: string; support_state?: string; rejection_reason?: string;
 };
 export type StudentOrderHistory = { signedIn: boolean; orders: StudentOrder[]; unavailable?: boolean;
   preferences?: { orderAlerts: boolean; refundAlerts: boolean } };

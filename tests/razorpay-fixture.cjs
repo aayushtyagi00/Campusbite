@@ -6,6 +6,9 @@ globalThis.fetch = async (input, init) => {
   if (req.method === "POST" && url.pathname === "/v1/orders") {
     return Response.json({ ...await req.json(), id: "order_Fixture" });
   }
+  if (req.method === "GET" && url.pathname === "/v1/orders/order_Fixture/payments") {
+    return Response.json({items:[{id:"pay_Recovered",order_id:"order_Fixture",amount:100,currency:"INR",status:"captured",captured:true,amount_refunded:0,created_at:1600000000}]});
+  }
   if (req.method === "GET" && url.pathname.startsWith("/v1/payments/pay_")) {
     const id = url.pathname.split("/").pop();
     const captured = id === "pay_Captured";

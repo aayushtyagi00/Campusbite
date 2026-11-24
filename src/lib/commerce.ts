@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
+import { foodCourts, type FoodCourt } from "./campus";
 import type { FoodCourtId, Fulfillment, Stall } from "./campus";
 import type { StudentOrderHistory } from "./student-order-types";
 import { studentAccount, studentIdentity } from "./student-auth";
@@ -25,7 +26,7 @@ const activeStorefronts = unstable_cache(async (_project: string) => {
   const [storefronts, menu] = await Promise.all([
     db.from("commerce_stalls").select(`
       slug,display_name,location,cuisine,court,photo,opens,closes,capacity,enabled,
-      vendor_paused,closed_dates,basket_limit,weekly_hours,pickup_minutes,
+      vendor_paused,closed_dates,basket_limit,weekly_hours,pickup_minutes,holding_minutes,
       vendor_shops!inner(id,vendor_applications!inner(id))
     `)
       .eq("published", true).eq("standing", "approved")
@@ -39,12 +40,21 @@ const activeStorefronts = unstable_cache(async (_project: string) => {
   const stalls: Stall[] = storefronts.data.map(row => ({
     id: row.slug, name: row.display_name, location: row.location, cuisine: row.cuisine, photo: row.photo,
     opening: row.opens?.slice(0, 5) ?? "", closing: row.closes?.slice(0, 5) ?? "",
-    weeklyHours: row.weekly_hours, pickupMinutes: row.pickup_minutes,
+    holdingMinutes:row.holding_minutes, weeklyHours: row.weekly_hours, pickupMinutes: row.pickup_minutes,
     foodCourt: row.court as FoodCourtId, capacity: row.capacity, closedDates: row.closed_dates, basketLimit: row.basket_limit, paused: !row.enabled || row.vendor_paused, approval: "Approved",
   }));
   const published = new Set(stalls.map(stall => stall.id));
   return { stalls, products: (menu.data as CommerceMenuRow[]).filter(item => published.has(item.stall_slug)).map(catalogProduct) };
 }, ["campusbite-storefronts"], { tags: ["campusbite-storefronts"], revalidate: 30 });
+
+const loadCourts=unstable_cache(async (_project:string):Promise<readonly FoodCourt[]>=>{
+  const {data,error}=await commerceDb().from("food_courts").select("id,name").order("position").order("name");
+  return error || !data?.length ? foodCourts : data;
+},["campusbite-courts"],{revalidate:30});
+
+export async function campusCourts() {
+  return loadCourts(process.env.SUPABASE_URL ?? "").catch(()=>foodCourts);
+}
 
 export async function liveStorefronts() {
   try {
@@ -60,16 +70,23 @@ export async function liveOrderHistory(includeOrders: boolean): Promise<StudentO
     if (!actor) return { signedIn: false, orders: [] };
     if (!includeOrders) return { signedIn: true, orders: [] };
     const { data, error } = await commerceDb().from("commerce_orders")
-      .select("id,detail,pickup_at,pickup_minutes,amount_paise,status,accept_until,provider_payment,refund,pickup_code,events,support,created_at")
+      .select("id,detail,pickup_at,pickup_minutes,amount_paise,status,accept_until,provider_payment,latest_payment_attempt,refund,holding_until,events,support,support_reply,support_state,created_at")
       .eq("student_id", actor.id).order("created_at", { ascending: false }).limit(100);
     if (error) throw error;
+    const active = data.filter(row=>["accepted","preparing","ready"].includes(row.status));
+    const codes = new Map<string,string>();
+    if (active.length) {
+      const result=await commerceDb().rpc("student_pickup_codes",{actor:actor.id,targets:active.map(order=>order.id)});
+      if (result.error) throw result.error;
+      for (const row of result.data) codes.set(row.id,row.code);
+    }
     return { signedIn: true, preferences: { orderAlerts: actor.profile.orderAlerts, refundAlerts: actor.profile.refundAlerts }, orders: data.map(row => {
       const start = Date.parse(row.pickup_at);
       return {
         ...row.detail, id: row.id, total: row.amount_paise, slot: { start, end: start + (row.pickup_minutes ?? 10) * 60_000 },
         status: row.status as Fulfillment, placed: Date.parse(row.created_at), deadline: Date.parse(row.accept_until) || 0,
-        payment: row.provider_payment ? "Verified" : "Pending",
-        refund: row.refund, code: row.pickup_code, events: row.events, support: row.support ?? undefined,
+        payment: row.provider_payment ? "Verified" : row.latest_payment_attempt==="failed" ? "Failed" : "Pending",
+        holdingUntil: row.holding_until, refund: row.refund, code: codes.get(row.id) ?? "", events: row.events, support_reply: row.support_reply, support_state: row.support_state, support: row.support ?? undefined,
       };
     }) };
   } catch {

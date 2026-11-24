@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { foodCourts } from "@/lib/campus";
+import type { FoodCourt } from "@/lib/campus";
 import { saveApplication } from "@/lib/onboarding-actions";
 import type { VendorApplication } from "@/lib/staff/database";
 import { Notice } from "./ui";
 
-export function ApplicationEditor({ application: a, id, initialName }: { application?: VendorApplication; id: string; initialName: string }) {
+export function ApplicationEditor({ application: a, id, initialName, courts }: { courts:readonly FoodCourt[]; application?: VendorApplication; id: string; initialName: string }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   return <form className="panel panel-pad stack" onSubmit={async event => {
@@ -25,7 +25,7 @@ export function ApplicationEditor({ application: a, id, initialName }: { applica
       <label className="field">Owner or contact name<input name="contact_name" defaultValue={a?.contact_name} maxLength={100} /></label>
       <label className="field">Phone number<input name="phone" type="tel" defaultValue={a?.phone} maxLength={24} /></label>
       <label className="field">Food court<select name="court" defaultValue={a?.court ?? ""}><option value="">Select a food court</option>
-        {foodCourts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+        {courts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
       <label className="field">Exact stall location<input name="location" defaultValue={a?.location} maxLength={150} /></label>
       <label className="field">Cuisine<input name="cuisine" defaultValue={a?.cuisine} maxLength={120} /></label>
       <label className="field">Opens (IST)<input type="time" name="opens" defaultValue={a?.opens?.slice(0, 5)} /></label>

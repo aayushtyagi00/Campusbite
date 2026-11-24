@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { pickupSlots } from "../src/lib/campus.ts";
 import { createClient } from "@supabase/supabase-js";
 
 const { STAGING_SUPABASE_URL, STAGING_SUPABASE_SECRET_KEY, LOAD_TEST_STALL } = process.env;
@@ -20,12 +19,11 @@ const [configuration, menu] = await Promise.all([
 assert(!configuration.error && !menu.error, "Enable the staging storefront with at least one menu item");
 const item = menu.data;
 const settings = configuration.data;
-const now = Date.now();
-const next = pickupSlots({id:LOAD_TEST_STALL,approval:"Approved",paused:settings.vendor_paused,capacity:settings.capacity,
-  opening:settings.opens.slice(0,5),closing:settings.closes.slice(0,5),weeklyHours:settings.weekly_hours,
-  closedDates:settings.closed_dates,pickupMinutes:settings.pickup_minutes}, [{prep:item.prep,qty:1}], [], now+60000)
-  .find(window=>window.start<=now+3600000);
-assert(next, "Choose a staging shop with an available pickup window within the next hour.");
+const basket=[{id:item.id,price:item.price,qty:1}];
+const quote=await db.rpc("commerce_pickup_availability",{stall:LOAD_TEST_STALL,items:basket});
+assert.ifError(quote.error);
+const next=quote.data.slots.find(window=>window.start>Date.now()+(Math.max(item.prep,4)+10)*60000);
+assert(next, "Choose a staging shop with an available pickup window and time for the load run.");
 const slot = new Date(next.start).toISOString();
 
 const existing = await db.from("commerce_orders").select("id", { count: "exact", head: true })

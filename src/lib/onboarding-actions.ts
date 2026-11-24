@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { foodCourts } from "./campus";
+import { campusCourts } from "./commerce";
 import { orderUuid } from "./commerce";
 import { adminSession, allowAttempt } from "./staff/access";
 import { staffService } from "./staff/supabase";
@@ -42,10 +42,10 @@ export async function saveApplication(id: string, revision: number, submit: bool
   const opens = field(form, "opens") || null, closes = field(form, "closes") || null;
   if (shop_name.length < 2 || shop_name.length > 100 || contact_name.length > 100 || phone.length > 24 ||
     location.length > 150 || description.length > 1200 || registration.length > 240 || cuisine.length > 120 ||
-    (court && !foodCourts.some(c => c.id === court)) || [opens, closes].some(t => t && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)))
+    (court && !(await campusCourts()).some(c => c.id === court)) || [opens, closes].some(t => t && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)))
     return fail("Check the shop name and business details.");
   if (submit && (contact_name.length < 2 || !/^[+\d ().-]{7,24}$/.test(phone) || phone.replace(/\D/g, "").length < 7 ||
-    location.length < 2 || cuisine.length < 2 || !court || !opens || !closes || closes <= opens || !registration))
+    location.length < 2 || cuisine.length < 2 || !court || !opens || !closes || closes === opens || !registration))
     return fail("Complete the contact, stall, registration and opening-hours fields before submitting.");
   if (submit && form.get("agreement") !== "on") return fail("Read and accept the vendor agreement before submitting.");
   const now = new Date().toISOString();

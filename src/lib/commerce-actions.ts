@@ -1,5 +1,7 @@
 "use server";
 
+import { allowAttempt } from "./staff/access";
+import { staffService } from "./staff/supabase";
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { basketLimit, type CartLine, type Product } from "./campus";
@@ -13,6 +15,8 @@ export async function startLiveCheckout(lines: CartLine[], start: number, note: 
   if (!liveCommerce()) return { error: "Live checkout is disabled." };
   const actor = await studentIdentity(true);
   if (!actor) return { signIn: true };
+  const service=staffService();
+  if (!service || !await allowAttempt(service,"student-checkout",actor.id,30,300)) return {error:"Too many checkout requests. Please try again shortly."};
   const settings = await paymentSettings().catch(() => null);
   if (!settings) return { error: "Payments are temporarily unavailable for this environment." };
   if (!Array.isArray(lines) || lines.length < 1 || lines.length > basketLimit || !orderUuid.test(requestId) ||
@@ -55,6 +59,9 @@ export async function startLiveCheckout(lines: CartLine[], start: number, note: 
     if (!order || order.fingerprint !== fingerprint) return { error: "Your bag changed. Start checkout again." };
     if (order.status !== "unpaid") return { id: order.id };
     if (Date.parse(order.reserved_until) <= Date.now()) return { error: "Your payment window expired. Choose a pickup window again." };
+    const control = await db.from("ordering_control").select("paused").eq("singleton", true).single();
+    if (control.error) throw control.error;
+    if (control.data.paused) return { error: "Campus ordering is paused." };
     let provider = order.provider_order;
     if (!order.provider_order) {
       const candidate = await findOrCreateRazorpayOrder(order.id, amount);

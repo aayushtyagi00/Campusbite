@@ -20,6 +20,7 @@ test("student saves preferences and resets by code or by email link on a second 
     student_consume_recovery: ["attempt","proof_hash"],
   };
   const tokenHash = "1".repeat(64);
+  let syncedPreferences:unknown;
   let redirect = "", checks = 0, changes = 0, used = false;
   const fixture = createServer(async (req,res) => {
     res.setHeader("content-type","application/json");
@@ -29,6 +30,10 @@ test("student saves preferences and resets by code or by email link on a second 
       for await (const chunk of req) raw += chunk;
       const body = raw ? JSON.parse(raw) : {};
       const fn = url.pathname.split("/").pop() as keyof typeof rpc;
+      if (url.pathname==="/rest/v1/push_subscriptions" && req.method==="PATCH" && url.searchParams.get("student_id")==="eq."+user.id) {
+        syncedPreferences=body;
+        return res.writeHead(204).end();
+      }
       if (Object.hasOwn(rpc,fn)) {
         const args = rpc[fn];
         const row = await db.query<{result:unknown}>("select public."+fn+"("+args.map((_,i)=>"$"+(i+1)).join(",")+") as result",args.map(k=>body[k]));
@@ -60,6 +65,7 @@ test("student saves preferences and resets by code or by email link on a second 
     await page.getByLabel("Refund updates").uncheck();
     await page.getByRole("button",{name:"Save account settings"}).click();
     await expect(page.getByText("Account settings saved.")).toBeVisible();
+    expect(syncedPreferences).toEqual({order_alerts:true,refund_alerts:false});
     await page.reload();
     await expect(page.getByLabel("Display name")).toHaveValue("Campus Student");
     await expect(page.getByLabel("Refund updates")).not.toBeChecked();

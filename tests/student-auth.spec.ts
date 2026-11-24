@@ -6,10 +6,19 @@ test.use({ baseURL: "http://127.0.0.1:3109" });
 
 test("a signed capture webhook verifies the provider payment before recording its event", async ({ request }) => {
   const events: unknown[] = [];
+  let queued: unknown;
   const fixture = createServer(async (req,res) => {
     const path = new URL(req.url!, "http://localhost").pathname;
     res.setHeader("Content-Type","application/json");
     if (path === "/rest/v1/razorpay_environment") return res.end(JSON.stringify({mode:"test"}));
+    if (path === "/rest/v1/payment_webhook_queue") {
+      if (req.method==="POST") {
+        let body="";
+        for await (const chunk of req) body+=chunk;
+        queued=JSON.parse(body);
+      }
+      return res.end(JSON.stringify(queued));
+    }
     if (path === "/rest/v1/commerce_orders") return res.end(JSON.stringify({provider_payment:null,amount_paise:100}));
     if (path === "/rest/v1/rpc/commerce_apply_razorpay_event") {
       let body = "";
@@ -34,6 +43,42 @@ test("a signed capture webhook verifies the provider payment before recording it
   } finally {
     await new Promise<void>(resolve => fixture.close(() => resolve()));
   }
+});
+
+test("the scheduled worker recovers a captured payment after the browser closes",async({request})=>{
+  const order="00000000-0000-4000-8000-000000000099";
+  const attempts:unknown[]=[];
+  const captures:unknown[]=[];
+  const runs:unknown[]=[];
+  const fixture=createServer(async(req,res)=>{
+    const path=new URL(req.url!,"http://localhost").pathname;
+    let raw="";
+    for await(const chunk of req) raw+=chunk;
+    const body=raw ? JSON.parse(raw) : {};
+    res.setHeader("Content-Type","application/json");
+    if (path==="/rest/v1/razorpay_environment") return res.end(JSON.stringify({mode:"test"}));
+    if (path==="/rest/v1/commerce_worker_runs") {
+      if (req.method==="POST") return res.end(JSON.stringify({id:order}));
+      runs.push(body); return res.writeHead(204).end();
+    }
+    if (path==="/rest/v1/rpc/claim_payment_recovery") return res.end(JSON.stringify([{id:order,provider_order:"order_Fixture",amount_paise:100}]));
+    if (path==="/rest/v1/commerce_payment_attempts") {attempts.push(body); return res.writeHead(201).end();}
+    if (path==="/rest/v1/rpc/commerce_apply_razorpay_event") {captures.push(body); return res.end("true");}
+    if (path==="/rest/v1/commerce_orders" && req.method==="PATCH") return res.writeHead(204).end();
+    if (path==="/rest/v1/rpc/expire_uncollected") return res.writeHead(204).end();
+    if (["commerce_refund_jobs","claim_order_push","claim_payment_webhooks"].some(name=>path==="/rest/v1/rpc/"+name)) return res.end("[]");
+    return res.writeHead(404).end("{}");
+  });
+  await new Promise<void>((resolve,reject)=>fixture.once("error",reject).listen(3110,"127.0.0.1",resolve));
+  try {
+    expect((await request.post("/api/jobs/commerce")).status()).toBe(401);
+    const response=await request.post("/api/jobs/commerce",{headers:{authorization:"Bearer worker-fixture"}});
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toMatchObject({paymentRetries:0,webhookRetries:0});
+    expect(attempts).toEqual([expect.objectContaining({payment_id:"pay_Recovered",order_id:order,status:"captured"})]);
+    expect(captures).toEqual([expect.objectContaining({event_id:"recovery:pay_Recovered",gateway_order:"order_Fixture",amount:100,key_mode:"test"})]);
+    expect(runs).toEqual([expect.objectContaining({outcome:"ok"})]);
+  } finally {await new Promise<void>(resolve=>fixture.close(()=>resolve()));}
 });
 
 test("admin test checkout confirms capture and distinguishes authorization", async ({ page, context }) => {

@@ -26,16 +26,18 @@ export type Storefront = {
   photo: string; opens: string | null; closes: string | null; capacity: number; published: boolean; enabled: boolean;
   standing: "approved" | "suspended"; payment_status: "not_started" | "pending" | "verified" | "legacy_enabled";
   provider_ref: string; revision: number; vendor_paused: boolean; closed_dates: string[]; basket_limit: number;
+  advance_minutes: number; acceptance_seconds: number; buffer_minutes: number; last_pickup_minutes: number; holding_minutes: number | null;
   menu_categories: string[]; weekly_hours: WeeklyHours; pickup_minutes: number;
 };
 export type VendorOrder = {
   id: string; shop_id: string; reference: string;
-  status: "awaiting" | "accepted" | "preparing" | "ready" | "collected" | "cancelled" | "expired" | "rejected";
+  status: "awaiting" | "accepted" | "preparing" | "ready" | "collected" | "uncollected" | "cancelled" | "expired" | "rejected";
   pickup_at: string;
   items?: { name: string; qty: number; price?: number }[];
   preparation_note?: string;
 };
 export type BoardOrder = VendorOrder & {
+  buffer_minutes?: number; holding_until?:string|null;
   pickup_minutes: number; accept_until: string | null; prep_minutes: number | null; amount_paise: number | null;
   rejection_reason: string | null; refund: string | null; events: { status: string; at: number }[];
 };
@@ -60,6 +62,8 @@ export type StaffDatabase = {
     };
     Views: Record<never, never>;
     Functions: {
+      set_ordering_pause: { Args:{value:boolean}; Returns:undefined };
+      review_order_case: { Args:{target:string;version:number;state:string;reply:string;request_refund:boolean}; Returns:boolean };
       campusbite_is_admin: { Args: Record<never, never>; Returns: boolean };
       campusbite_consume_attempt: { Args: { p_bucket: string; p_key_hash: string; p_limit: number; p_seconds: number }; Returns: boolean };
       campusbite_grant_vendor_access: { Args: { p_shop_id: string; p_email: string; p_role: VendorRole }; Returns: undefined };
@@ -68,6 +72,7 @@ export type StaffDatabase = {
       vendor_reject_order: { Args: { order_id: string; reason: string }; Returns: boolean };
       vendor_earnings: { Args: { target_shop: string; since_time: string; until_time: string }; Returns: Earnings };
       vendor_save_category: { Args: { target_shop: string; previous_name: string; new_name: string }; Returns: undefined };
+      vendor_set_pickup_policy: { Args:{ target_shop:string; expected_revision:number; advance:number; acceptance:number; buffer:number; cutoff:number; holding:number|null }; Returns:undefined };
       vendor_set_schedule: { Args: { target_shop: string; expected_revision: number; opening: string; closing: string; slots: number; basket: number; paused: boolean; closures: string[]; weekly: WeeklyHours; minutes: number }; Returns: undefined };
       vendor_write_item: { Args: { target_shop: string; item_id: string; expected_revision: number; fields: Record<string,string|number|boolean|null> }; Returns: undefined };
       commerce_fulfill: { Args: { order_id: string; next_status: string; submitted_code: string }; Returns: boolean };

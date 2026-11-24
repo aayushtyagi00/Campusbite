@@ -4,6 +4,7 @@ const baseURL = "http://127.0.0.1:3108";
 
 export default defineConfig({
   testDir: "./tests",
+  workers: 1, // Integration fixtures share the same loopback Supabase port.
   testMatch: "**/*.spec.ts",
   timeout: 60_000,
   use: {
@@ -32,6 +33,7 @@ export default defineConfig({
       RAZORPAY_KEY_SECRET: "student-payment-fixture",
       RAZORPAY_WEBHOOK_SECRET: "payment-webhook-fixture",
       COMMERCE_JOB_SECRET: "worker-fixture",
+      VAPID_PRIVATE_KEY: "preference-sync-fixture",
       CAMPUSBITE_STAFF_ORIGIN: "http://127.0.0.1:3000",
       VERCEL_ENV: "production",
       VERCEL_PROJECT_PRODUCTION_URL: "campusbite-lpu.vercel.app",
