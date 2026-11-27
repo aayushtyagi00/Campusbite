@@ -9,7 +9,9 @@ export async function GET(request: Request, {params}: {params:Promise<{shop:stri
   if (!client) return new Response(null,{status:503});
   const identity = await client.auth.getUser();
   if (identity.error && (!identity.error.status || identity.error.status>=500)) return new Response(null,{status:503});
-  if (!identity.data.user?.email_confirmed_at) return new Response(null,{status:401});
+  if (identity.error || !identity.data.user?.email_confirmed_at) return new Response(null,{status:401});
+  const portal = await client.rpc("campusbite_vendor_session");
+  if (portal.error || portal.data !== true) return new Response(null,{status:portal.error ? 503 : 403});
   const {data,error} = await client.rpc("vendor_order_feed",{target_shop:shop,selected_order:id ?? undefined});
   if (error) return new Response(null,{status:error.code==="42501" ? 403 : 503});
   return Response.json({orders:data,serverTime:Date.now()},{headers:{"Cache-Control":"private, no-store"}});

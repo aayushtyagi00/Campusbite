@@ -22,13 +22,36 @@ const empty: Preview = {
 const listeners = new Set<() => void>();
 let snapshot = empty;
 let hydrated = false;
+
+function restoreCart(value: unknown): CartLine[] {
+  if (!Array.isArray(value)) return [];
+  const cart: CartLine[] = [];
+  const seen = new Set<string>();
+  for (const line of value) {
+    if (typeof line?.id !== "string" || !line.id || seen.has(line.id) ||
+        !Number.isInteger(line.qty) || line.qty < 1 || line.qty > basketLimit) continue;
+    const unitPrice = Number.isSafeInteger(line.unitPrice) && line.unitPrice > 0 ? line.unitPrice : undefined;
+    cart.push({ id: line.id, qty: line.qty, unitPrice });
+    seen.add(line.id);
+  }
+  return cart;
+}
+
 function read() {
   try {
     const saved = localStorage.getItem(key);
     if (saved) {
       const previous = JSON.parse(saved);
-      const data = { ...empty, cart: previous.cart ?? [], checkout: previous.checkout ?? empty.checkout,
-        foodCourt: previous.foodCourt ?? defaultFoodCourt, started: previous.started ?? 0, campusStart: previous.campusStart ?? 0 };
+      if (!previous || typeof previous !== "object") return empty;
+      const checkout = previous.checkout;
+      // The preview clock starts at noon on the same campus date as the first cart edit.
+      const validClock = Number.isSafeInteger(previous.started) && Number.isSafeInteger(previous.campusStart) &&
+        previous.started > 0 && Math.abs(previous.started - previous.campusStart) <= 86_400_000;
+      const data = { ...empty, cart: restoreCart(previous.cart),
+        checkout: { start: Number.isSafeInteger(checkout?.start) ? checkout.start : 0,
+          note: typeof checkout?.note === "string" ? checkout.note.slice(0,180) : "" },
+        foodCourt: typeof previous.foodCourt === "string" ? previous.foodCourt : defaultFoodCourt,
+        started: validClock ? previous.started : 0, campusStart: validClock ? previous.campusStart : 0 };
       if ("student" in previous) localStorage.setItem(key, JSON.stringify(data));
       return data;
     }
@@ -87,7 +110,7 @@ export function update(change: (data: Preview) => Preview) {
 export function cartItems(data: Preview) {
   return data.cart.flatMap(line => {
     const product = data.products.find(item => item.id === line.id);
-    return product ? [{ ...product, qty: line.qty, priceChanged: line.unitPrice !== undefined && line.unitPrice !== product.price }] : [];
+    return product ? [{ ...product, qty: line.qty, priceChanged: line.unitPrice !== product.price }] : [];
   });
 }
 export function setQuantity(product: Product, qty: number, replace = false, catalog = snapshot): string | undefined {

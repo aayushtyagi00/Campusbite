@@ -35,7 +35,7 @@ export async function RecentCommerceOrders({ reference="", view="all" }: {refere
       </form>
       {!orders.data.length && <Empty title="No matching orders" />}
       {orders.data.map(order=><details className="stack" key={order.id}>
-        <summary>CB-{order.id.slice(0,8).toUpperCase()} · {order.detail.name} · {money(order.amount_paise)} · {order.status}</summary>
+        <summary>{order.detail.reference ?? "CB-"+order.id.slice(0,8).toUpperCase()} · {order.detail.name} · {money(order.amount_paise)} · {order.status}</summary>
         <p>Student account · {order.student_id}</p><p>Gateway order · {order.provider_order ?? "Pending"}<br/>Payment · {order.provider_payment ?? "Pending"}<br/>Refund · {order.refund} {order.provider_refund}</p>
         {order.refund_error && <p>{order.refund_error}</p>}
         {order.recovery_error && <p>{order.recovery_error} · {order.recovery_count} recovery checks</p>}

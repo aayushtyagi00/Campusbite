@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { createHmac } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { PGlite } from "@electric-sql/pglite";
@@ -22,6 +23,8 @@ test("student saves preferences and resets by code or by email link on a second 
   const tokenHash = "1".repeat(64);
   let syncedPreferences:unknown;
   let redirect = "", checks = 0, changes = 0, used = false;
+  const trafficKeys: string[] = [];
+  const trafficHash = (value: string) => createHmac("sha256","test-server-key").update("student-recovery/"+value).digest("hex");
   const fixture = createServer(async (req,res) => {
     res.setHeader("content-type","application/json");
     try {
@@ -35,6 +38,7 @@ test("student saves preferences and resets by code or by email link on a second 
         return res.writeHead(204).end();
       }
       if (Object.hasOwn(rpc,fn)) {
+        if (fn === "student_request_recovery") trafficKeys.push(body.ip_hash);
         const args = rpc[fn];
         const row = await db.query<{result:unknown}>("select public."+fn+"("+args.map((_,i)=>"$"+(i+1)).join(",")+") as result",args.map(k=>body[k]));
         return res.end(JSON.stringify(row.rows[0].result));
@@ -52,7 +56,8 @@ test("student saves preferences and resets by code or by email link on a second 
         if (req.method === "PUT" && body.password) changes++;
         return res.end(JSON.stringify(user));
       }
-      if (url.pathname === "/auth/v1/logout") return res.end("{}");
+      if (url.pathname === "/auth/v1/logout" && url.searchParams.get("scope") === "global") return res.end("{}");
+      if (url.pathname === "/auth/v1/logout") return res.writeHead(400).end("{}");
       return res.end("[]");
     } catch { return res.writeHead(500).end("{}"); }
   });
@@ -70,7 +75,12 @@ test("student saves preferences and resets by code or by email link on a second 
     await expect(page.getByLabel("Display name")).toHaveValue("Campus Student");
     await expect(page.getByLabel("Refund updates")).not.toBeChecked();
     await expect(page.getByLabel("Order and pickup updates")).toBeChecked();
-    await context.clearCookies();
+    await page.getByRole("button",{name:"Sign out"}).click();
+    await expect(page).toHaveURL(/\/sign-in\?logout=device$/);
+    await expect(page.getByText(/Signed out on this device/)).toBeVisible();
+    expect((await context.cookies()).some(cookie=>cookie.name.startsWith("campusbite-student-auth"))).toBe(false);
+    await page.goto("/account");
+    await expect(page.getByRole("link",{name:"Sign in or register"})).toBeVisible();
     const send = async () => {
       await page.goto("/recovery");
       await page.getByLabel("Email",{exact:true}).fill(user.email);
@@ -79,6 +89,7 @@ test("student saves preferences and resets by code or by email link on a second 
       expect(redirect).toMatch(/^https:\/\/campusbite-lpu\.vercel\.app\/recovery\/[\da-f-]{36}$/);
     };
     await send();
+    expect(trafficKeys).toEqual([trafficHash("network-unavailable/email/" + user.email)]);
     await page.reload();
     await expect(page.getByRole("button",{name:/Resend in/})).toBeDisabled();
     await page.getByLabel("Verification code").fill("123456");
@@ -94,7 +105,9 @@ test("student saves preferences and resets by code or by email link on a second 
     await page.getByRole("button",{name:"Save new password"}).click();
     await expect(page.getByRole("heading",{name:"Password updated"})).toBeVisible();
     await db.exec("update campusbite_private.student_recoveries set requested_at=requested_at-interval '61 seconds'");
+    await page.setExtraHTTPHeaders({ "x-real-ip": "192.0.2.45" });
     await send();
+    expect(trafficKeys[1]).toBe(trafficHash("ip/192.0.2.45"));
     const linkPath = new URL(redirect).pathname;
     const second = await other.newPage();
     await second.goto(linkPath+"#recovery="+tokenHash);

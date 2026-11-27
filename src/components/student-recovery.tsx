@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import Script from "next/script";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Challenge } from "./challenge";
+import { useEffect, useState, type FormEvent } from "react";
 import { requestRecovery, setRecoveredPassword, verifyStudentRecovery } from "@/lib/student-recovery-actions";
 import { Back, Notice } from "./ui";
 
@@ -10,25 +10,6 @@ type Stage = "request" | "code" | "link" | "password" | "done";
 type Saved = { email: string; attempt: string; until: number };
 const storageKey = "campusbite.student.recovery";
 const empty: Saved = { email: "", attempt: "", until: 0 };
-
-type Widget = {
-  render(container: HTMLElement, options: object): string;
-  remove(id: string): void;
-};
-function Challenge({ siteKey, onToken }: { siteKey: string; onToken: (value: string) => void }) {
-  const element = useRef<HTMLDivElement>(null);
-  const [ready, setReady] = useState(false);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    const api = (window as Window & { turnstile?: Widget }).turnstile;
-    if (!ready || !api || !element.current) return;
-    const id = api.render(element.current, { sitekey: siteKey, action: "student-recovery", callback: onToken,
-      "expired-callback": () => onToken(""), "error-callback": () => { onToken(""); setFailed(true); } });
-    return () => api.remove(id);
-  }, [onToken, ready, siteKey]);
-  return <><Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" onReady={() => setReady(true)} onError={() => setFailed(true)} />
-    <div ref={element} />{failed && <Notice>Verification could not load. Refresh the page and try again.</Notice>}</>;
-}
 
 export function StudentRecovery({ linkAttempt, grantAttempt, siteKey }: { linkAttempt?: string; grantAttempt?: string; siteKey?: string }) {
   const [stage, setStage] = useState<Stage>("request");
@@ -123,7 +104,7 @@ export function StudentRecovery({ linkAttempt, grantAttempt, siteKey }: { linkAt
           {stage === "request" && <><label className="field">Email<input name="email" type="email" autoComplete="email" required maxLength={254}
             value={saved.email} onChange={e => { setSaved({ ...saved, email: e.target.value, until: 0, attempt: "" }); }} /></label>
             <p>If you usually sign in with Google, you can continue using Google on the sign-in page.</p>
-            {challenge && siteKey && <Challenge key={widgetVersion} siteKey={siteKey} onToken={setChallengeToken} />}
+            {challenge && siteKey && <Challenge action="student-recovery" key={widgetVersion} siteKey={siteKey} onToken={setChallengeToken} />}
             <button className="button" disabled={!canSend}>{wait ? resendLabel : "Email a code"}</button></>}
           {stage === "code" && <><p>Enter the code sent to {saved.email}, or open the reset link in the email.</p>
             <label className="field">Verification code<input name="code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6,10}" required /></label>
@@ -135,7 +116,7 @@ export function StudentRecovery({ linkAttempt, grantAttempt, siteKey }: { linkAt
             <button className="button" disabled={pending}>Save new password</button></>}
         </form>
         {stage === "code" && <form className="stack" onSubmit={submit}><input type="hidden" name="resend" value="1" />
-          {challenge && siteKey && <Challenge key={widgetVersion} siteKey={siteKey} onToken={setChallengeToken} />}
+          {challenge && siteKey && <Challenge action="student-recovery" key={widgetVersion} siteKey={siteKey} onToken={setChallengeToken} />}
           <button className="button secondary" disabled={!canSend}>{resendLabel}</button></form>}
         {(stage === "link" || stage === "code") && <button className="text-link" disabled={pending} onClick={startAgain}>Start a new request</button>}
         {message && <Notice>{message}</Notice>}

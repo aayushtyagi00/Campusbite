@@ -2,11 +2,13 @@
 
 import { cookies } from "next/headers";
 import { clearDeviceAlerts } from "./push-device";
-import { allowAttempt } from "./staff/access";
+import { allowAttempt, allowNetworkAttempt } from "./staff/access";
 import { staffService } from "./staff/supabase";
 import { commerceDb } from "./commerce";
 import { redirect } from "next/navigation";
-import { studentClient, studentReturnCookie, studentSettings } from "./student-auth";
+import { clearStudentCookies, studentClient, studentReturnCookie, studentSettings } from "./student-auth";
+import { clearRecoveryGrant } from "./student-recovery";
+import { publicFormVerified } from "./turnstile";
 
 export async function saveStudentProfile(form: FormData) {
   const client = await studentClient(true);
@@ -14,12 +16,14 @@ export async function saveStudentProfile(form: FormData) {
   if (!name || name.length > 80) return { error: "Enter a display name of up to 80 characters." };
   if (!client) return { error: "Sign in to update your account." };
   const { data: { user } } = await client.auth.getUser();
-  if (!user?.email || user.is_anonymous) return { error: "Sign in to update your account." };
+  if (!user?.email || !user.email_confirmed_at || user.is_anonymous) return { error: "Sign in to update your account." };
+  const orderAlerts = form.get("orderAlerts") === "on";
+  const refundAlerts = form.get("refundAlerts") === "on";
   const { error } = await client.auth.updateUser({ data: { campusbite_name: name,
-    campusbite_order_alerts: form.get("orderAlerts") === "on", campusbite_refund_alerts: form.get("refundAlerts") === "on" } });
+    campusbite_order_alerts: orderAlerts, campusbite_refund_alerts: refundAlerts } });
   if (!error && process.env.VAPID_PRIVATE_KEY) {
     const sync = await commerceDb().from("push_subscriptions").update({
-      order_alerts: form.has("orderAlerts"), refund_alerts: form.has("refundAlerts"),
+      order_alerts: orderAlerts, refund_alerts: refundAlerts,
     }).eq("student_id", user.id);
     if (sync.error) return { error: "Profile saved. Save again to sync device notifications." };
   }
@@ -29,14 +33,19 @@ export async function saveStudentProfile(form: FormData) {
 export async function studentAuth(operation: "sign-in" | "sign-up" | "confirm" | "google" | "sign-out", form: FormData) {
   const client = await studentClient(true);
   const settings = studentSettings();
-  if (!client || !settings) return { error: "Student authentication is temporarily unavailable." };
   const destination = form.get("returnTo") === "checkout" ? "/checkout" : "/account";
+  if (!["sign-in", "sign-up", "confirm", "google", "sign-out"].includes(operation)) return { error: "Invalid sign-in request." };
   if (operation === "sign-out") {
     try { await clearDeviceAlerts("student"); } catch { /* Sign-out must remain available if the notification database is offline. */ }
-    const { error } = await client.auth.signOut({ scope: "local" });
-    if (error) return { error: "Could not sign out. Please try again." };
-    redirect("/sign-in");
+    let revoked = false;
+    try {
+      if (client) revoked = !(await client.auth.signOut({ scope: "local" })).error;
+    } catch { /* Local credentials must be cleared when the provider is unreachable. */ }
+    await clearStudentCookies();
+    await clearRecoveryGrant();
+    redirect(revoked ? "/sign-in" : "/sign-in?logout=device");
   }
+  if (!client || !settings) return { error: "Student authentication is temporarily unavailable." };
   if (operation === "google") {
     if (!settings.origin) return { error: "Google sign-in is unavailable until the student site address is configured." };
     const { error, data } = await client.auth.signInWithOAuth({
@@ -52,22 +61,31 @@ export async function studentAuth(operation: "sign-in" | "sign-up" | "confirm" |
   const password = String(form.get("password") ?? "");
   const token = String(form.get("code") ?? "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return { error: "Enter a valid email address." };
-  const service=staffService();
-  const limit=operation==="sign-up" ? 5 : 15;
-  if (!service || !await allowAttempt(service,"student-"+operation,email,limit,900))
-    return {error:"Please wait before trying again."};
   if (operation === "confirm") {
     if (!/^\d{6,10}$/.test(token)) return { error: "Enter the code from your email." };
+  } else if (password.length < 8 || password.length > 72) return { error: "Enter a password between 8 and 72 characters." };
+  const name = String(form.get("name") ?? "").trim();
+  if (operation === "sign-up") {
+    if (Buffer.byteLength(password, "utf8") > 72) return { error: "Use a password of at most 72 UTF-8 bytes." };
+    if (!name || name.length > 80) return { error: "Enter a display name of up to 80 characters." };
+    if (password !== form.get("confirmation")) return { error: "The passwords do not match." };
+    if (!settings.origin) return { error: "Registration is unavailable until the student site address is configured." };
+    const verified = await publicFormVerified(form.get("cf-turnstile-response"), "student-signup");
+    if (verified === null) return { error: "Registration verification is temporarily unavailable." };
+    if (!verified)
+      return { error: "Complete the verification and try creating your account again." };
+  }
+  const service=staffService();
+  const limit=operation==="sign-up" ? 5 : 15;
+  if (!service || !await allowNetworkAttempt(service,"student-"+operation+"-network",120,900) ||
+      !await allowAttempt(service,"student-"+operation,email,limit,900))
+    return {error:"Please wait before trying again."};
+  if (operation === "confirm") {
     const { error } = await client.auth.verifyOtp({ email, token, type: "email" });
     if (error) return { error: "That code is invalid or expired." };
     redirect(destination);
   }
-  if (password.length < 8 || password.length > 72) return { error: "Enter a password between 8 and 72 characters." };
   if (operation === "sign-up") {
-    const name = String(form.get("name") ?? "").trim();
-    if (!name || name.length > 80) return { error: "Enter a display name of up to 80 characters." };
-    if (password !== form.get("confirmation")) return { error: "The passwords do not match." };
-    if (!settings.origin) return { error: "Registration is unavailable until the student site address is configured." };
     const { data, error } = await client.auth.signUp({ email, password, options: {
       emailRedirectTo: settings.origin + "/auth/student/callback", data: { campusbite_name: name },
     } });

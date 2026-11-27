@@ -32,6 +32,7 @@ createServer((req, res) => {
   const { pathname, searchParams } = new URL(req.url, "http://localhost");
   res.setHeader("Content-Type", "application/json");
   if (pathname === "/") return res.end("{}");
+  if (pathname === "/rest/v1/campus_reviews" && req.method === "GET") return res.end("[]");
   if (pathname === "/rest/v1/commerce_menu") return res.end(JSON.stringify(menu));
   if (pathname !== "/rest/v1/commerce_stalls") return res.writeHead(404).end("{}");
   const select = searchParams.get("select") ?? "";

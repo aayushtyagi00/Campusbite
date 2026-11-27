@@ -1,8 +1,8 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { isIP } from "node:net";
-import { headers } from "next/headers";
+import { verifyChallenge } from "./turnstile";
+import { requestNetwork } from "./request-network";
 import { createClient } from "@supabase/supabase-js";
 import { commerceDb, orderUuid } from "./commerce";
 import { studentSettings } from "./student-auth";
@@ -16,18 +16,6 @@ const isolatedAuth = (url: string, key: string) => createClient(url, key, {
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
 });
 
-async function verifyChallenge(token: string, origin: string) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret || !token || token.length > 2048) return false;
-  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-    method: "POST", body: new URLSearchParams({ secret, response: token }),
-    signal: AbortSignal.timeout(8000), cache: "no-store",
-  });
-  if (!response.ok) return false;
-  const result = await response.json();
-  return result.success === true && result.action === "student-recovery" && result.hostname === new URL(origin).hostname;
-}
-
 export async function requestRecovery(address: string, challengeToken = ""): Promise<Result> {
   if (typeof address !== "string" || address.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address.trim()))
     return { error: "Enter a valid email address." };
@@ -35,11 +23,11 @@ export async function requestRecovery(address: string, challengeToken = ""): Pro
   if (!settings?.origin) return { error: unavailable };
   try {
     const email = address.trim().toLowerCase();
-    // Vercel supplies this header. Other hosts share a conservative fallback bucket.
-    const ip = process.env.VERCEL === "1" ? (await headers()).get("x-vercel-forwarded-for")?.split(",")[0].trim() : undefined;
-    const passed = typeof challengeToken === "string" && !!challengeToken && await verifyChallenge(challengeToken, settings.origin);
+    const network = await requestNetwork();
+    const passed = typeof challengeToken === "string" && !!challengeToken && await verifyChallenge(challengeToken, settings.origin, "student-recovery");
     const { data, error } = await commerceDb().rpc("student_request_recovery", {
-      email_hash: emailKey(email), ip_hash: recoveryHash("ip", ip && isIP(ip) ? ip : "unknown"), challenge_passed: passed,
+      email_hash: emailKey(email), ip_hash: network ? recoveryHash("ip", network) : recoveryHash("network-unavailable/email", email),
+      challenge_passed: passed,
     });
     if (error || !data) return { error: unavailable };
     if (data.challenge) return { challenge: true, error: process.env.TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY
@@ -94,8 +82,8 @@ export async function verifyStudentRecovery(attempt: string, method: "link" | "c
 
 export async function setRecoveredPassword(form: FormData): Promise<Result> {
   const password = form.get("password");
-  if (typeof password !== "string" || password.length < 8 || password.length > 72)
-    return { error: "Enter a password between 8 and 72 characters." };
+  if (typeof password !== "string" || password.length < 8 || Buffer.byteLength(password, "utf8") > 72)
+    return { error: "Use at least 8 characters and at most 72 UTF-8 bytes." };
   if (password !== form.get("confirmation")) return { error: "The passwords do not match." };
   const settings = studentSettings();
   const grant = await recoveryGrant();
@@ -108,9 +96,11 @@ export async function setRecoveredPassword(form: FormData): Promise<Result> {
     const authHeaders = { apikey: settings.key, Authorization: "Bearer " + openRecoveryValue(result.data), "Content-Type": "application/json" };
     const updated = await fetch(settings.url + "/auth/v1/user", { method: "PUT", headers: authHeaders,
       body: JSON.stringify({ password }), cache: "no-store", signal: AbortSignal.timeout(10000) });
-    await fetch(settings.url + "/auth/v1/logout?scope=local", { method: "POST", headers: authHeaders,
-      signal: AbortSignal.timeout(5000) }).catch(() => {});
+    const scope = updated.ok ? "global" : "local";
+    const revoked = await fetch(settings.url + "/auth/v1/logout?scope=" + scope, { method: "POST", headers: authHeaders,
+      signal: AbortSignal.timeout(5000) }).catch(() => null);
     if (!updated.ok) return { error: "Password update failed. Request a new email and choose a different password.", restart: true };
+    if (!revoked?.ok) return { error: "Password updated. Other sessions could not be confirmed signed out. Contact support if you suspect account misuse.", restart: true };
     return { done: true };
   } catch { return { error: "Could not confirm the password change. Try signing in or request a new recovery email.", restart: true }; }
 }

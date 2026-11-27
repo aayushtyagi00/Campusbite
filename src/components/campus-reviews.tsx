@@ -4,16 +4,18 @@ import { MessageSquarePlus, Star } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { reviewLimits, type Review } from "@/lib/reviews";
 import { Notice } from "./ui";
+import { Challenge } from "./challenge";
 
 const ratings = [1, 2, 3, 4, 5];
 const dateFormat = new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" });
 
-export function CampusReviews() {
+export function CampusReviews({ siteKey }: { siteKey?: string }) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingError, setLoadingError] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [challengeVersion, setChallengeVersion] = useState(0);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [rating, setRating] = useState(0);
@@ -50,7 +52,7 @@ export function CampusReviews() {
       const response = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: input.get("name"), comment: input.get("comment"), rating }),
+        body: JSON.stringify({ name: input.get("name"), comment: input.get("comment"), rating, challenge: input.get("cf-turnstile-response") }),
       });
       const data: { review?: Review; error?: string } = await response.json();
       if (!response.ok || !data.review) throw new Error(data.error || "Your review could not be saved. Please try again.");
@@ -65,6 +67,7 @@ export function CampusReviews() {
     } finally {
       setPosting(false);
       attempts.current = false;
+      setChallengeVersion(version => version + 1);
     }
   }
 
@@ -91,6 +94,7 @@ export function CampusReviews() {
       <label className="field">Your review<textarea name="comment" required maxLength={reviewLimits.comment} rows={4} /></label>
       <p className="fineprint">Your display name, rating, and review will be public. Leave out contact details and order codes.</p>
       {error && <Notice>{error}</Notice>}
+      {siteKey && <Challenge key={challengeVersion} siteKey={siteKey} action="public-review" />}
       <button className="button" disabled={posting || loading}>{posting ? "Publishing…" : "Publish review"}</button>
     </form>}
     {success && <Notice>{success}</Notice>}

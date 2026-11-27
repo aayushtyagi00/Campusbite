@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { StudentPage } from "@/components/student";
 import { StudentHelp } from "@/components/student-help";
-import { studentAccount, studentSettings } from "@/lib/student-auth";
+import { studentIdentity, studentSettings } from "@/lib/student-auth";
 import { StudentRecovery } from "@/components/student-recovery";
 import { recoveryGrant } from "@/lib/student-recovery";
 import { orderUuid } from "@/lib/commerce";
@@ -30,12 +30,12 @@ export default async function Page({ params, searchParams }: {
     if (!studentSettings()) return <div className="narrow"><h1>Student accounts are temporarily unavailable</h1>
       <p>Please try again once student sign-in has been configured.</p></div>;
     const query = await searchParams;
-    const actor = screen[0] === "account" ? await studentAccount() : null;
-    return <LiveStudentAccount key={screen[0]} section={screen[0]} email={actor?.email} profile={actor?.profile}
-      returnTo={query.returnTo === "checkout" ? "checkout" : undefined} googleError={query.error === "google"} />;
+    const actor = screen[0] === "account" ? await studentIdentity() : null;
+    return <LiveStudentAccount key={screen[0]} section={screen[0]} email={actor?.email} profile={actor?.profile} siteKey={process.env.TURNSTILE_SITE_KEY}
+      returnTo={query.returnTo === "checkout" ? "checkout" : undefined} googleError={query.error === "google"} deviceLogout={query.logout === "device"} />;
   }
   const history = screen[0] === "orders" || screen[0] === "checkout"
     ? await liveOrderHistory(screen[0] === "orders")
     : undefined;
-  return <StudentPage section={screen[0] ?? "home"} id={screen[1]} history={history} />;
+  return <StudentPage section={screen[0] ?? "home"} id={screen[1]} history={history} siteKey={process.env.TURNSTILE_SITE_KEY} />;
 }

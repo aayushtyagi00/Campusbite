@@ -2,6 +2,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { createHmac } from "node:crypto";
+import { requestNetwork } from "../request-network";
 import { isStaffCookie, staffClient, staffService, staffSession, verifiedStaffSession } from "./supabase";
 import type { StaffArea } from "./database";
 import type { User } from "@supabase/supabase-js";
@@ -14,14 +15,20 @@ export function staffDashboard(area: StaffArea) {
   return area === "admin" ? "/admin" : "/vendor/dashboard";
 }
 
-export async function adminSession(writeCookies = false) {
+export async function ownerSession(writeCookies = false) {
   if (!(await cookies()).getAll().some(({ name }) => isStaffCookie(name))) return null;
   const client = await staffClient(writeCookies);
   if (!client) return null;
   const [session, { data, error }] = await Promise.all([
-    verifiedStaffSession(client), client.rpc("campusbite_is_admin"),
+    verifiedStaffSession(client), client.rpc("campusbite_owner_state"),
   ]);
-  return !error && data === true ? session : null;
+  if (!session || error || (data !== "granted" && data !== "challenge")) return null;
+  return { ...session, assured: data === "granted" };
+}
+
+export async function adminSession(writeCookies = false) {
+  const owner = await ownerSession(writeCookies);
+  return owner?.assured ? owner : null;
 }
 
 export async function vendorMemberships(session: NonNullable<Awaited<ReturnType<typeof staffSession>>>) {
@@ -31,24 +38,20 @@ export async function vendorMemberships(session: NonNullable<Awaited<ReturnType<
 
 type StaffService = NonNullable<ReturnType<typeof staffService>>;
 
-export async function invited(service: StaffService, area: StaffArea, email: string) {
-  if (area === "admin") {
-    const { data, error } = await service.from("staff_admins").select("email").eq("email", email).maybeSingle();
-    return !error && Boolean(data);
-  }
+export async function vendorInvited(service: StaffService, email: string) {
   const { data, error } = await service.from("vendor_access").select("shop_id").eq("email", email).limit(1);
   return !error && Boolean(data?.length);
 }
 
-export async function invitedUser(service: StaffService, area: StaffArea, user: User | null, expectedEmail?: string) {
+export async function invitedVendorUser(service: StaffService, user: User | null, expectedEmail?: string) {
   const email = user?.email?.toLowerCase();
   return Boolean(user?.email_confirmed_at && email &&
-    (expectedEmail === undefined || email === expectedEmail) && await invited(service, area, email));
+    (expectedEmail === undefined || email === expectedEmail) && await vendorInvited(service, email));
 }
 
 export async function allowAttempt(service: StaffService, bucket: string, key: string, limit: number, seconds: number) {
   const secret = process.env.SUPABASE_SECRET_KEY?.trim();
-  if (!secret) return false;
+  if (!secret) return null;
   const hash = createHmac("sha256", secret).update(key).digest("hex");
   const { data, error } = await service.rpc("campusbite_consume_attempt", {
     p_bucket: bucket,
@@ -56,5 +59,11 @@ export async function allowAttempt(service: StaffService, bucket: string, key: s
     p_limit: limit,
     p_seconds: seconds,
   });
-  return !error && data === true;
+  return error ? null : data === true;
+}
+
+export async function allowNetworkAttempt(service: StaffService, bucket: string, limit: number, seconds: number) {
+  const network = await requestNetwork();
+  // Auth and review callers also enforce their email or site-wide allowance.
+  return network === null || allowAttempt(service, bucket, network, limit, seconds);
 }

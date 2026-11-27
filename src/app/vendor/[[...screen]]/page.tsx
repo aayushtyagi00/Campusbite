@@ -10,7 +10,7 @@ import { OrderBoard } from "@/components/staff-vendor";
 import { Notice, Status } from "@/components/ui";
 import { vendorMemberships } from "@/lib/staff/access";
 import { vendorRoles } from "@/lib/staff/database";
-import { staffSession } from "@/lib/staff/supabase";
+import { vendorSession } from "@/lib/staff/vendor-session";
 import { liveCommerce } from "@/lib/student-auth";
 import { orderUuid } from "@/lib/commerce";
 import { categories } from "@/lib/campus";
@@ -18,7 +18,7 @@ import { VendorMenu } from "@/components/vendor-menu";
 import { Availability, VendorEarnings, WorkspaceOnboarding } from "@/components/vendor-settings";
 
 const sections = {board:"Order board",orders:"Order details",menu:"Menu editor",availability:"Availability",onboarding:"Onboarding",earnings:"Earnings"} as const;
-type Client = NonNullable<Awaited<ReturnType<typeof staffSession>>>["client"];
+type Client = NonNullable<Awaited<ReturnType<typeof vendorSession>>>["client"];
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ screen?: string[] }>;
@@ -28,7 +28,7 @@ export default async function Page({ params, searchParams }: {
   const query = await searchParams;
   if (!screen.length) return <VendorHome />;
   if (screen[0]==="onboarding" && screen.length<=2 && (!query.shop || screen.length===2)) return <VendorOnboarding id={screen[1]} name={query.name} />;
-  const session = await staffSession();
+  const session = await vendorSession();
   if (screen.length===1 && screen[0]==="sign-in") {
     if (session && (await vendorMemberships(session)).data?.length) redirect("/vendor/board");
     return <StaffSignIn area="vendor" googleError={query.error==="google"} />;
@@ -80,7 +80,7 @@ async function ShopSettings({client,shop,section}:{client:Client;shop:string;sec
 }
 
 async function OwnerTeam({ client, shopId, members }: {
-  client: NonNullable<Awaited<ReturnType<typeof staffSession>>>["client"]; shopId: string; members?: string;
+  client: NonNullable<Awaited<ReturnType<typeof vendorSession>>>["client"]; shopId: string; members?: string;
 }) {
   const page = members && /^[1-9]\d{0,6}$/.test(members) ? Number(members) : 1;
   const offset = (page - 1) * 25;

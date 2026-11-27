@@ -288,9 +288,45 @@ test("historical applications and storefronts migrate, and a fourth shop can pub
   await db.query("insert into auth.mfa_factors values($1,'verified')",[admin]);
   assert.equal((await adminQuery("select campusbite_is_admin() as ok")).rows[0].ok,false);
   await migrate("202611230008_food_courts");
+  await migrate("202611240001_public_reviews");
+  await migrate("202611240002_payment_retries");
+  await t.test("payment retries back off and exhausted verification requires admin review", async () => {
+    await db.query("update commerce_orders set refund='Pending',refund_after=now(),refund_error=null where id=$1", [ready.id]);
+    for (let i=0; i<2; i++)
+      await db.query("update commerce_orders set refund_error='Refund submission needs review' where id=$1", [ready.id]);
+    const state = await db.query("select refund_failures, refund_after >= now()+interval '3 minutes' as delayed from commerce_orders where id=$1",[ready.id]);
+    assert.deepEqual(state.rows[0], { refund_failures: 2, delayed: true });
+    await db.query("update commerce_orders set refund_error=null where id=$1", [ready.id]);
+    assert.equal((await db.query("select refund_failures from commerce_orders where id=$1",[ready.id])).rows[0].refund_failures,0);
+
+    const event = "entity:live:payment.captured:pay_Review";
+    await db.query(`insert into payment_webhook_queue(event_id,kind,payment,amount,mode,attempts)
+      values($1,'payment.captured','pay_Review',2400,'live',11)`,[event]);
+    assert.equal((await db.query("select attempts from claim_payment_webhooks('live') where event_id=$1",[event])).rows[0].attempts,12);
+    await db.query("update payment_webhook_queue set due=now() where event_id=$1",[event]);
+    assert.equal((await db.query("select * from claim_payment_webhooks('live') where event_id=$1",[event])).rows.length,0);
+    await assert.rejects(vendorQuery("select retry_reviewed_webhook($1)",[event]));
+    await db.transaction(async tx => {
+      await tx.exec("set local role authenticated");
+      await tx.query("select set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claims',$2,true)", [admin,'{"aal":"aal2"}']);
+      assert.equal((await tx.query("select retry_reviewed_webhook($1) as queued",[event])).rows[0].queued,true);
+      assert.equal((await tx.query("select retry_reviewed_webhook($1) as queued",[event])).rows[0].queued,false);
+    });
+    assert.equal((await db.query("select attempts from claim_payment_webhooks('live') where event_id=$1",[event])).rows[0].attempts,1);
+  });
+  await t.test("reviews are readable and writable only through the server", async () => {
+    for (const role of ["anon", "authenticated", "service_role"]) {
+      const { rows } = await db.query(`select
+        has_table_privilege($1,'public.campus_reviews','select') as read,
+        has_column_privilege($1,'public.campus_reviews','name','insert') as submit,
+        has_column_privilege($1,'public.campus_reviews','created_at','insert') as set_timestamp`, [role]);
+      assert.deepEqual(rows[0], { read: role === "service_role", submit: role === "service_role", set_timestamp: false });
+    }
+  });
   assert.equal((await vendorQuery("select id from food_courts")).rows.length,4);
   await assert.rejects(vendorQuery("insert into food_courts values('private','Unauthorized',10)"));
-  await t.test("new checkout uses vendor timing and one protected handoff from reservation through capture",async()=>{
+  await t.test("new checkout uses vendor timing and one protected handoff from reservation through capture",async t=>{
+    await migrate("202611240003_payment_integrity");
     const {randomUUID}=await import("node:crypto");
     const revision=(await db.query("select revision from commerce_stalls where shop_id=$1",[shop])).rows[0].revision;
     await vendorQuery("select vendor_set_pickup_policy($1,$2,120,45,1,5,30)",[shop,revision]);
@@ -305,6 +341,14 @@ test("historical applications and storefronts migrate, and a fourth shop can pub
     const reserve=()=>db.query("select (commerce_reserve($1,$2,'fingerprint','fourth-kitchen',$3,$4,2400)).id",[actor,request,stamp,line]);
     const id=(await reserve()).rows[0].id;
     assert.equal((await reserve()).rows[0].id,id);
+    assert.equal(await getCode(actor,id),undefined);
+    assert.deepEqual((await vendorQuery("select vendor_order_feed($1,$2) as orders",[shop,id])).rows[0].orders,[]);
+    for (const role of ["anon","authenticated","service_role"]) {
+      const privileges=(await db.query(`select has_function_privilege($1,'commerce_capture(text,text,integer,text)','execute') as raw_capture,
+        has_table_privilege($1,'vendor_orders','insert') as insert_ticket,
+        has_column_privilege($1,'commerce_orders','provider_payment','update') as write_capture`,[role])).rows[0];
+      assert.deepEqual(privileges,{raw_capture:false,insert_ticket:false,write_capture:false});
+    }
     await db.query("update commerce_orders set provider_order='order_New' where id=$1",[id]);
     const captured=()=>db.query("select commerce_apply_razorpay_event('webhook:fresh','payment.captured','pay_New','order_New',2400,'INR','live') as ok");
     assert.equal((await captured()).rows[0].ok,true);
@@ -321,5 +365,138 @@ test("historical applications and storefronts migrate, and a fourth shop can pub
     assert.equal(await fulfill(id,"collected",code),true);
     assert.equal(await fulfill(id,"collected",code),false);
     assert.equal((await db.query("select count(*)::int as n from payment_journal where order_id=$1",[id])).rows[0].n,1);
+    await t.test("paid orders with the same short reference both reach the kitchen",async()=>{
+      const reservation=(await db.query("select (commerce_reserve($1,$2,'reference-test','fourth-kitchen',$3,$4,2400)).id",
+        [actor,randomUUID(),stamp,line])).rows[0].id;
+      const collidingId=id.slice(0,8)+randomUUID().slice(8);
+      await db.query("update commerce_orders set id=$1,provider_order='order_Collision' where id=$2",[collidingId,reservation]);
+      const result=await db.query("select commerce_apply_razorpay_event('reference-test','payment.captured','pay_Collision','order_Collision',2400,'INR','live') as ok");
+      assert.equal(result.rows[0].ok,true);
+      const refs=await db.query("select v.reference,o.detail->>'reference' as student from vendor_orders v join commerce_orders o using(id) where v.id=$1",[collidingId]);
+      assert.deepEqual(refs.rows[0],{reference:"CB-"+collidingId.toUpperCase(),student:"CB-"+collidingId.toUpperCase()});
+    });
+    await t.test("a verified merchant refund closes an open ticket and withdraws its handoff code",async()=>{
+      const refunded=(await db.query("select (commerce_reserve($1,$2,'refund-test','fourth-kitchen',$3,$4,2400)).id",
+        [actor,randomUUID(),stamp,line])).rows[0].id;
+      await db.query("update commerce_orders set provider_order='order_External' where id=$1",[refunded]);
+      const event=(kind)=>db.query("select commerce_apply_razorpay_event($1,$2,'pay_External','order_External',2400,'INR','live') as ok",
+        ["merchant-"+kind,kind]);
+      assert.equal((await event("payment.captured")).rows[0].ok,true);
+      assert.equal(await fulfill(refunded,"accepted"),true);
+      assert.equal(await fulfill(refunded,"preparing"),true);
+      assert.equal(await fulfill(refunded,"ready"),true);
+      const issued=await getCode(actor,refunded);
+      assert.match(issued,/^\d{6}$/);
+      assert.equal((await event("refund.processed")).rows[0].ok,true);
+      assert.equal((await event("refund.processed")).rows[0].ok,true);
+      assert.equal(await getCode(actor,refunded),undefined);
+      assert.equal(await fulfill(refunded,"collected",issued),false);
+      const order=(await db.query(`select o.status,o.refund,v.status as ticket from commerce_orders o
+        join vendor_orders v using(id) where o.id=$1`,[refunded])).rows[0];
+      assert.deepEqual(order,{status:"cancelled",refund:"Succeeded",ticket:"cancelled"});
+      assert.equal((await db.query("select count(*)::int as n from payment_journal where order_id=$1 and kind='refund'",[refunded])).rows[0].n,1);
+    });
+  });
+  await t.test("vendor and owner permissions follow the verified portal session and the current database grants", async () => {
+    const { randomUUID } = await import("node:crypto");
+    await db.exec(`
+      create table auth.sessions(id uuid primary key, user_id uuid references auth.users);
+      create table auth.identities(user_id uuid references auth.users, provider text, provider_id text, identity_data jsonb);
+      alter table auth.mfa_factors add column factor_type text default 'totp';
+    `);
+    await migrate("202611240004_vendor_access");
+    await migrate("202611240005_owner_admin");
+    const owner = randomUUID(), ownerLogin = randomUUID(), ordinaryLogin = randomUUID(), previousAdmin = randomUUID();
+    const vendorLogin = randomUUID(), applicantLogin = randomUUID(), ownerEmail = "tyagiaayush3030@gmail.com";
+    await db.query("insert into auth.users values($1,$2,now())", [owner, ownerEmail]);
+    for (const [id, user] of [[ownerLogin, owner], [ordinaryLogin, owner], [previousAdmin, admin], [vendorLogin, vendor], [applicantLogin, vendor]])
+      await db.query("insert into auth.sessions values($1,$2)", [id, user]);
+    await db.query("insert into auth.identities values($1,'google','owner-sub',$2),($3,'google','other-sub',$4)", [
+      owner, { email: ownerEmail, email_verified: false }, admin, { email: "admin@example.test", email_verified: true },
+    ]);
+    async function portal(user, session, sql, params = [], claims = {}) {
+      return db.transaction(async tx => {
+        await tx.exec("set local role authenticated");
+        await tx.query("select set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claims',$2,true)",
+          [user, JSON.stringify({ sub: user, session_id: session, ...claims })]);
+        return (await tx.query(sql, params)).rows;
+      });
+    }
+    async function register(sql, params) {
+      return db.transaction(async tx => {
+        await tx.exec("set local role service_role");
+        return (await tx.query(sql, params)).rows[0].ok;
+      });
+    }
+    const google = "select register_admin_session($1,$2,$3) as ok";
+    const vendorSignIn = "select register_vendor_session($1,$2,'vendor@example.test') as ok";
+    const permissions = "select campusbite_owner_state() as owner, campusbite_is_admin() as admin, campusbite_vendor_session() as vendor";
+    const denied = { owner: "denied", admin: false, vendor: false };
+    const totp = { aal: "aal2", amr: [{ method: "oauth" }, { method: "totp" }] };
+    for (const role of ["anon","authenticated"]) {
+      const privileges = (await db.query(`select
+        has_function_privilege($1,'register_admin_session(uuid,uuid,text)','execute') as admin,
+        has_function_privilege($1,'register_vendor_session(uuid,uuid,text,text)','execute') as vendor,
+        has_function_privilege($1,'confirm_vendor_password_setup(uuid,uuid,text)','execute') as password_setup,
+        has_table_privilege($1,'campusbite_private.admin_sessions','insert') as insert_admin,
+        has_table_privilege($1,'campusbite_private.vendor_sessions','insert') as insert_vendor`, [role])).rows[0];
+      assert.deepEqual(privileges, { admin: false, vendor: false, password_setup: false, insert_admin: false, insert_vendor: false });
+    }
+    assert.equal(await register(google, [previousAdmin, admin, "other-sub"]), false);
+    assert.deepEqual((await portal(admin, previousAdmin, permissions, [], totp))[0], denied);
+    assert.deepEqual(await portal(admin, previousAdmin, "select id from vendor_applications"), []);
+    assert.equal(await register(google, [ownerLogin, owner, "owner-sub"]), false);
+    await db.query("update auth.identities set identity_data=$1 where user_id=$2", [{ email: ownerEmail, email_verified: true }, owner]);
+    assert.equal(await register(google, [ownerLogin, owner, "other-sub"]), false);
+    assert.equal(await register(google, [previousAdmin, owner, "owner-sub"]), false);
+    assert.equal(await register(google, [ownerLogin, owner, "owner-sub"]), true);
+    assert.equal(await register(google, [ownerLogin, owner, "owner-sub"]), true);
+    const challenge = { owner: "challenge", admin: false, vendor: false };
+    assert.deepEqual((await portal(owner, ownerLogin, permissions))[0], challenge);
+    assert.deepEqual(await portal(owner, ownerLogin, "select id from vendor_applications"), []);
+    assert.deepEqual((await portal(owner, ownerLogin, permissions, [], totp))[0], challenge);
+    await db.query("insert into auth.mfa_factors values($1,'verified','totp')", [owner]);
+    assert.deepEqual((await portal(owner, ownerLogin, permissions, [], { aal: "aal2", amr: [{ method: "phone" }] }))[0], challenge);
+    assert.deepEqual((await portal(owner, ownerLogin, permissions, [], totp))[0], { owner: "granted", admin: true, vendor: false });
+    assert.ok((await portal(owner, ownerLogin, "select id from vendor_applications", [], totp)).length);
+    const notificationOrder = (await db.query("select id from commerce_orders where provider_payment='pay_New'")).rows[0].id;
+    for (const [endpoint, email, login] of [["owner-endpoint",ownerEmail,ownerLogin],["legacy-endpoint",ownerEmail,null],["previous-endpoint","admin@example.test",previousAdmin]]) {
+      await db.query("insert into push_subscriptions(endpoint,keys,audience,email,staff_session_id) values($1,'{}','admin',$2,$3)",[endpoint,email,login]);
+      await db.query("insert into campusbite_private.push_jobs(endpoint,order_id,topic,body) values($1,$2,'exception','Fixture notification')",[endpoint,notificationOrder]);
+    }
+    const recipients = await db.query("select endpoint from claim_order_push() where audience='admin'");
+    assert.deepEqual(recipients.rows,[{endpoint:"owner-endpoint"}]);
+    assert.deepEqual((await portal(owner, ordinaryLogin, permissions, [], totp))[0], denied);
+    assert.deepEqual((await portal(vendor, applicantLogin, permissions))[0], denied);
+    assert.deepEqual(await portal(vendor, applicantLogin, "select shop_id from vendor_access"), []);
+    assert.equal(await register(vendorSignIn, [vendorLogin, owner]), false);
+    assert.equal(await register(vendorSignIn, [vendorLogin, vendor]), false);
+    assert.equal(await register("select register_vendor_session($1,$2,'vendor@example.test','other-sub') as ok",[vendorLogin,vendor]),false);
+    await db.query("insert into auth.identities values($1,'google','vendor-sub',$2)",[vendor,{email:"vendor@example.test",email_verified:true}]);
+    assert.equal(await register("select register_vendor_session($1,$2,'vendor@example.test','vendor-sub') as ok",[vendorLogin,vendor]),true);
+    assert.equal((await portal(vendor,vendorLogin,permissions))[0].vendor,true);
+    await portal(vendor,vendorLogin,"select end_staff_session()");
+    assert.deepEqual((await portal(vendor,vendorLogin,permissions))[0],denied);
+    assert.equal(await register("select confirm_vendor_password_setup($1,$2,'vendor@example.test') as ok",[applicantLogin,vendor]),true);
+    assert.deepEqual((await portal(vendor, applicantLogin, permissions))[0], denied);
+    assert.equal(await register(vendorSignIn, [vendorLogin, vendor]), true);
+    assert.deepEqual((await portal(vendor, vendorLogin, permissions, [], totp))[0], { ...denied, vendor: true });
+    assert.deepEqual(await portal(vendor, vendorLogin, "select shop_id from vendor_access"), [{ shop_id: shop }]);
+    const otherShop = (await db.query("select id from vendor_shops where id<>$1 limit 1",[shop])).rows[0].id;
+    await assert.rejects(portal(vendor, vendorLogin, "select vendor_order_feed($1)", [otherShop]));
+    await db.query("delete from vendor_access where shop_id=$1 and email='vendor@example.test'", [shop]);
+    assert.deepEqual((await portal(vendor, vendorLogin, permissions))[0], denied);
+    await db.query("update auth.identities set identity_data=$1 where user_id=$2", [{ email: "changed@example.test", email_verified: true }, owner]);
+    assert.deepEqual((await portal(owner, ownerLogin, permissions, [], totp))[0], denied);
+    await db.query("update auth.identities set identity_data=$1 where user_id=$2", [{ email: ownerEmail, email_verified: true }, owner]);
+    await portal(owner, ordinaryLogin, "select end_staff_session()");
+    assert.equal((await portal(owner, ownerLogin, permissions, [], totp))[0].admin,true);
+    await portal(owner, ownerLogin, "select end_staff_session()");
+    assert.deepEqual((await portal(owner, ownerLogin, permissions, [], totp))[0], denied);
+    assert.equal(await register(google, [ownerLogin, owner, "owner-sub"]), true);
+    await db.query("delete from auth.sessions where id=$1",[ownerLogin]);
+    assert.deepEqual((await portal(owner, ownerLogin, permissions, [], totp))[0], denied);
+    await db.query("insert into campusbite_private.push_jobs(endpoint,order_id,topic,body) values('owner-endpoint',$1,'exception','Another notification')",[notificationOrder]);
+    assert.deepEqual((await db.query("select endpoint from claim_order_push() where audience='admin'")).rows,[]);
   });
 });

@@ -1,5 +1,6 @@
 "use client";
 import { PushControl } from "./push-control";
+import { Challenge } from "./challenge";
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
@@ -9,13 +10,15 @@ import { Back, Notice } from "./ui";
 
 type Operation = Parameters<typeof studentAuth>[0];
 
-export function LiveStudentAccount({ section, email, profile, returnTo, googleError }: {
-  section: string; email?: string; profile?: StudentProfile; returnTo?: string; googleError?: boolean;
+export function LiveStudentAccount({ section, email, profile, returnTo, googleError, deviceLogout, siteKey }: {
+  section: string; email?: string; profile?: StudentProfile; returnTo?: string; googleError?: boolean; deviceLogout?: boolean; siteKey?: string;
 }) {
   const [step, setStep] = useState<Operation>("sign-in");
   const [address, setAddress] = useState("");
-  const [message, setMessage] = useState(googleError ? "Google sign-in could not be completed." : "");
+  const [message, setMessage] = useState(deviceLogout ? "Signed out on this device. The provider could not confirm session revocation."
+    : googleError ? "Google sign-in could not be completed." : "");
   const [pending, setPending] = useState(false);
+  const [challengeVersion, setChallengeVersion] = useState(0);
   async function run(operation: Operation, form = new FormData()) {
     setPending(true);
     setMessage("");
@@ -27,7 +30,10 @@ export function LiveStudentAccount({ section, email, profile, returnTo, googleEr
         setStep(result.next);
         setMessage("Check your email for a verification code.");
       }
-    } finally { setPending(false); }
+    } finally {
+      setPending(false);
+      if (operation === "sign-up") setChallengeVersion(version => version + 1);
+    }
   }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -71,6 +77,8 @@ export function LiveStudentAccount({ section, email, profile, returnTo, googleEr
         {inputCode && <label className="field">Verification code<input name="code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6,10}" required /></label>}
         {password && <label className="field">Password<input type="password" name="password" minLength={8} maxLength={72} autoComplete={step === "sign-in" ? "current-password" : "new-password"} required /></label>}
         {step === "sign-up" && <label className="field">Confirm password<input name="confirmation" autoComplete="new-password" type="password" minLength={8} maxLength={72} required /></label>}
+        {step === "sign-up" && <p className="fineprint">Read the <Link href="/privacy-policy">Privacy Policy</Link> and <Link href="/terms-of-service">Terms of Service</Link> before creating your account.</p>}
+        {step === "sign-up" && siteKey && <Challenge key={challengeVersion} siteKey={siteKey} action="student-signup" />}
         <button className="button" disabled={pending}>{pending ? "Please wait…" : inputCode ? "Verify code" : step === "sign-up" ? "Create account" : "Sign in"}</button>
       </form>
       {message && <Notice>{message}</Notice>}

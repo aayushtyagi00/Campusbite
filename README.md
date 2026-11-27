@@ -18,11 +18,27 @@ npm run dev
 | Vendor workspace | `/vendor/board` | Fulfill orders and verify pickup. Owners and managers can also edit the menu and availability, review onboarding, and view earnings. |
 | Admin workspace | `/admin` | Review applications, manage shop access, enable storefronts, set pickup capacity, and review orders and support |
 
-Google and email/password are available on all three sign-in pages once the providers are configured. Anyone can create a public ordering account at `/sign-in`. At `/vendor/sign-in` and `/admin/sign-in`, an approved email can create its account on first Google sign-in or use **Set or reset your password** for first-time email/password setup. Vendor approvals include a shop and role.
+Anyone can create a public ordering account at `/sign-in`. Vendors use Google or email and password at `/vendor/sign-in` and need an active role in their shop. The admin portal requires the owner's verified Google account and an authenticator code.
 
 Student accounts, recovery, and order history use Supabase. Both modes list published storefronts linked to an approved application from an authenticated vendor with a verified email. Preview mode disables checkout.
 
-Home reviews are public to visitors of the same server. They are stored in `.data/reviews` outside the public asset folder. Set `CAMPUSBITE_REVIEW_DIR` to a persistent writable directory when hosting a single server instance. A multi-instance deployment needs shared review storage.
+Home reviews use Supabase shared storage after applying `202611240001_public_reviews.sql`. Live and Vercel deployments require the commerce Supabase connection for reviews. Existing review files in `.data/reviews` (or `CAMPUSBITE_REVIEW_DIR`) remain visible on instances with access to that directory. A standalone preview without Supabase saves at most one review per minute to its local directory. Database-backed submissions allow six reviews per network per ten minutes and 180 site-wide per hour.
+
+Enable email confirmation on each hosted Supabase Auth project before granting staff or vendor access. Local Auth settings are in `supabase/config.toml`. On an existing installation where automatic email confirmation was enabled, independently verify existing privileged account owners before retaining their grants. Enable TOTP enrollment and verification in the staff Auth project.
+
+On Vercel, network rate limits use the platform’s `x-vercel-forwarded-for` header automatically. [Vercel request headers](https://vercel.com/docs/headers/request-headers)
+
+For self-hosting, restrict origin access to your trusted ingress before setting `CAMPUSBITE_TRUSTED_PROXY_HEADER`. Choose `cf-connecting-ip` or `x-real-ip` only if the ingress overwrites that header with the observed client address. For `x-forwarded-for`, the ingress must append its observed peer or rebuild the chain. Set `CAMPUSBITE_TRUSTED_PROXY_CIDRS` to the comma-separated ranges of additional trusted proxy hops. The app reads from the right and stops at the first address outside those ranges. An empty range list selects the rightmost address. Restart the app after changing these settings.
+
+With no trusted address, login and signup retain their per-email quotas, recovery counts attempts per mailbox, and verified reviews retain the site-wide quota. Pickup polling then allows 1,800 requests per minute per published, approved shop.
+
+Before enabling live orders, apply the reviews migration in staging, publish a review there, and verify it from a second browser. Rehearse a Razorpay Test Mode capture and refund with the scheduled worker running, then check the payment journal. Razorpay disputes require merchant follow-up in the provider dashboard. Verify who receives dispute alerts and who handles account-deletion requests sent to the support address. Confirm the production backup can be restored to an isolated database.
+
+Apply `202611240002_payment_retries.sql` with the matching app. Failed refund submissions back off to a maximum interval of six hours. After twelve scheduled verification attempts, an unresolved webhook stays in **Admin → Payment journal**. Check the order and payment in Razorpay, resolve the underlying problem, then choose **Retry after review**. The worker verifies the provider record again.
+
+Apply `202611240003_payment_integrity.sql`, `202611240004_vendor_access.sql`, and `202611240005_owner_admin.sql` in filename order before deploying the matching application. Kitchen fulfillment and pickup codes require a recorded capture for the full order amount. A verified full merchant refund closes an open ticket. Staff must sign in again through their portal after the upgrade and re-enable push notifications on the devices they use. Vendors who use passwords must complete **Set or reset your password** once with the code sent to their approved email.
+
+Live commerce and Vercel production deployments require both Turnstile keys for student signup and public reviews. Include the student hostname in the widget settings. Both forms verify the hostname and action before consuming submission quotas. Local preview can run with both keys blank.
 
 ## Production sign-in on Vercel
 
@@ -38,7 +54,7 @@ In the student Auth project, use the [student recovery email template](supabase/
 
 1. Apply [student recovery](supabase/migrations/202611200004_student_recovery.sql) once in the **commerce database** used by `SUPABASE_URL`. Profile names and notification choices are saved on each student's own Supabase Auth account. Existing students can set their display name from **Account**.
 2. Add the recovery redirect pattern above and install the recovery email template in the **student Auth project**. Set the email OTP expiration to one hour or less and retain the provider's rate limits. Application counters cover requests through CampusBite. Supabase also enforces its own limits for direct Auth requests.
-3. Create a Cloudflare Turnstile widget for the student site hostname. Add its public key as `TURNSTILE_SITE_KEY` and its secret as `TURNSTILE_SECRET_KEY` in Vercel. Deploy the app. Recovery requests at the shared-IP threshold require a verified challenge. On Vercel the server uses the platform-supplied IP header. Other hosts share one fallback bucket until their trusted proxy is integrated.
+3. Create a Cloudflare Turnstile widget for the student site hostname. Add its public key as `TURNSTILE_SITE_KEY` and its secret as `TURNSTILE_SECRET_KEY` in the deployment environment. Recovery requires a verified challenge from the twentieth request in an hour for the same trusted address, or the same mailbox when the address is unavailable.
 4. With a test student, open **Account**, update the display name and notification choices, then reload. Order and refund alerts appear as changes arrive while **My Orders** is open. For recovery, request an email and use the link in a different browser. Repeat with a fresh email to check the code path. Both paths ask for the new password twice and return a sign-in link after success.
 
 ## Verify
@@ -93,24 +109,18 @@ Set `CAMPUSBITE_TEST_BROWSER` to an existing Chromium executable to use it for t
 
 ## Configure vendor and administrator access
 
-1. Apply `supabase/migrations/202611180001_staff_access.sql` to a Supabase project for staff access.
+1. Apply all migrations in `supabase/migrations` in filename order to the staff/commerce Supabase project.
 2. Copy `.env.example` to `.env.local` and set the project URL, publishable key, and server-only secret key. Set `CAMPUSBITE_STAFF_ORIGIN` to the local URL for local development or the HTTPS URL for deployment. Keep the secret key out of browser code, source control, and public environment variables.
 3. In Supabase Auth, enable the Email provider and email confirmation. Configure the Magic Link template to include the password setup code via `{{ .Token }}`. Set a short code expiry and configure [custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp). For the shared project, allow new users to sign up and leave the staff-only Before User Created hook disabled. If previously enabled, disable that hook in Authentication → Hooks so students can register. Staff routes and database policies independently check active staff grants.
-4. As the database project owner, add the first administrator's exact email address in the Supabase SQL Editor. Replace the example address with the intended administrator's verified mailbox.
-
-   ```sql
-   insert into public.staff_admins (email)
-   values (lower(trim('admin@example.com')));
-   ```
-
+4. Enable TOTP enrollment and verification in Supabase Auth. The owner migration authorizes only `tyagiaayush3030@gmail.com`. Historical invitations and vendor roles cannot grant admin access.
 5. Enable the [Google provider](https://supabase.com/docs/guides/auth/social-sign-in/auth-google) in Supabase. Use the Supabase Auth callback URL shown in that provider’s settings as the authorized redirect URI in Google Cloud. Add the app callback `<CAMPUSBITE_STAFF_ORIGIN>/auth/staff/callback` to Supabase Auth’s allowed redirect URLs for each environment.
-6. Open `/admin/sign-in`. Use **Continue with Google** with the approved account or choose **Set or reset your password**, enter the emailed code, then sign in with email and password. In **Access Management**, create a shop, select it, and grant the vendor’s email **Owner**, **Manager**, or **Staff**. The approved person has the same two sign-in options at `/vendor/sign-in`.
+6. Open `/admin/sign-in` and choose **Continue with Google** with the owner account. On first sign-in, add the setup key to an authenticator and enter its six-digit code. Subsequent sign-ins challenge the enrolled authenticator. In **Access Management**, create a shop, select it, and grant the vendor’s email **Owner**, **Manager**, or **Staff**. The vendor can use Google or **Set or reset your password** at `/vendor/sign-in`.
 
 Apply `supabase/migrations/202611190001_shop_owner_team.sql` once after the staff access migration to enable owner team management. From the workspace Onboarding page, an Owner can add, change, and revoke Staff and Manager memberships in their selected shop. The main administrator assigns Owner roles from Access Management. Creating a shop opens its grant form automatically. For an existing shop, click **Select shop** before granting access.
 
 Owners and managers can view orders and sales for their assigned shops. Staff can view orders for their assigned shops. Both login methods require a verified email with an active grant for the requested portal. Access is evaluated on every protected request and by PostgreSQL row policies. Revoking access blocks future reads even when the person’s auth session still exists. Submitting an application creates no shop access. An explicit admin approval grants its verified applicant the Owner role. Grant changes are recorded in `vendor_access_audit`.
 
-Before connecting live commerce, verify email delivery and role checks against your Supabase project using two different shops and two test accounts. Enable administrator MFA as part of the production auth rollout. Expired rows in the private `staff_rate_limits` table can be deleted by a scheduled database maintenance job.
+Before connecting live commerce, verify email delivery and role checks against your Supabase project using two different shops and two test accounts. Expired rows in the private `staff_rate_limits` table can be deleted by a scheduled database maintenance job.
 
 ## Configure live commerce in staging
 
@@ -176,7 +186,7 @@ Photo assets in `public/food/` come from the existing Stitch HTML exports. Addit
 2. For device alerts, generate a VAPID key pair privately using the installed `web-push generate-vapid-keys` CLI. Set `NEXT_PUBLIC_VAPID_KEY` before building, plus server-only `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT`. Use a support mailto address or HTTPS URL for the subject. Keep the same pair across deployments for that environment. Open the student account or vendor workspace on the device and select **Enable device alerts**. Check receipt with the browser in the background.
 3. For scheduled work, enable Cron and pg_net on the test Supabase project. In Vault save the full HTTPS worker URL under `campusbite_worker_url` and the matching `COMMERCE_JOB_SECRET` under `campusbite_worker_secret`. Run [the scheduler setup](supabase/schedule-commerce.sql) as project owner. It schedules one job every 15 seconds to service short acceptance deadlines. Check hosting invocation limits before enabling it outside a rehearsal. Verify the most recent worker run under **Admin → Payment journal**. [Supabase scheduling](https://supabase.com/docs/guides/functions/schedule-functions)
 4. In **Vendor → Availability**, set the weekday hours in IST. For a shift ending at half past midnight, enter **00:30**. Choose the advance booking period, acceptance deadline, buffer, cutoff before closing and optional holding time. Ready orders show a collect-by time when a holding period applies. A new payment hold lasts up to two minutes. Offer times are calculated using the basket, inventory and available capacity.
-5. In **Admin → Authenticator**, enroll the admin using an authenticator app, then verify a fresh login from another browser. Supabase must allow TOTP enrollment and verification. A verified factor activates the database's second-factor check for that administrator. After all admins enroll and confirm recovery access, the database owner can require MFA for every admin with `update campusbite_private.admin_security set require_mfa=true where singleton`. [Supabase authenticator setup](https://supabase.com/docs/guides/auth/auth-mfa/totp)
+5. Sign in at `/admin/sign-in` with the owner’s Google account and complete authenticator enrollment. Verify a fresh login from a second browser. The database requires a completed authenticator challenge for every admin session. [Supabase authenticator setup](https://supabase.com/docs/guides/auth/auth-mfa/totp)
 6. Sign in as a student, choose a pickup window and pay with a Razorpay test method. Close the browser, reopen **My Orders**, accept from a vendor device, mark ready, and verify one handoff. Repeat with a rejection. Match the customer order, payment ID, refund ID and amount to the Razorpay Test Mode dashboard and payment journal. Exercise a paused stall, full slot and overnight shift. Check failed delivery and worker retry counts. The admin-only test on the public site verifies the gateway separately from food-order fulfillment.
 7. For production cutover, rehearse restoring a current backup to a separate database, including private tables and the pickup secret. Pause checkout and drain open handoffs before switching application versions. Verify signed-in history, a retained pickup code, worker heartbeat, and webhook processing before reopening. If validation fails, keep new orders paused and repair the matching version. Before restoring production, account for every capture and refund since the backup.
 
