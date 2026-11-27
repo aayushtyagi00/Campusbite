@@ -13,7 +13,7 @@ import { CampusReviews } from "./campus-reviews";
 import { usePickupAvailability } from "./use-pickup-availability";
 import { HomeGuide } from "./home-guide";
 
-export function StudentPage({ section, id, history }: { section: string; id?: string; history?: StudentOrderHistory }) {
+export function StudentPage({ section, id, history, siteKey }: { section: string; id?: string; history?: StudentOrderHistory; siteKey?: string }) {
   switch (section) {
     case "about": return <About />;
     case "stalls": return <Menu key={id} id={id} />;
@@ -21,11 +21,11 @@ export function StudentPage({ section, id, history }: { section: string; id?: st
     case "bag": return <Checkout />;
     case "checkout": return <Checkout checkout history={history} />;
     case "orders": return <StudentOrders history={history ?? { signedIn: false, orders: [] }} />;
-    default: return <Explore key={section} section={section} />;
+    default: return <Explore key={section} section={section} siteKey={siteKey} />;
   }
 }
 
-function Explore({ section }: { section: string }) {
+function Explore({ section, siteKey }: { section: string; siteKey?: string }) {
   const data = usePreview();
   const now = previewTime(data, useClock());
   const [query, setQuery] = useState("");
@@ -85,7 +85,7 @@ function Explore({ section }: { section: string }) {
     </div>
     {home && <>
       <div className="desktop-home-guide"><HomeGuide court={selectedCourt.name} vendors={courtVendors} products={data.products} /></div>
-      <CampusReviews />
+      <CampusReviews siteKey={siteKey} />
     </>}
   </>;
 }

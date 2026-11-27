@@ -20,11 +20,16 @@ test("the public vendor page offers applications while staff routes require sign
   for (const path of ["/vendor/sign-in", "/admin/sign-in"]) {
     await page.goto(path);
     await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
-    await expect(page.getByLabel("Email address", { exact: true })).toBeVisible();
-    await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "password");
-    await expect(page.getByLabel("Password setup code")).toHaveCount(0);
-    await page.getByText("Set or reset your password", { exact: true }).click();
-    await expect(page.getByRole("button", { name: "Send password setup code" })).toBeVisible();
+    if (path === "/admin/sign-in") {
+      await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
+      await expect(page.getByText("Set or reset your password", { exact: true })).toHaveCount(0);
+    } else {
+      await expect(page.getByLabel("Email address", { exact: true })).toBeVisible();
+      await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute("type", "password");
+      await expect(page.getByLabel("Password setup code")).toHaveCount(0);
+      await page.getByText("Set or reset your password", { exact: true }).click();
+      await expect(page.getByRole("button", { name: "Send password setup code" })).toBeVisible();
+    }
   }
   await page.goto("/auth/staff/callback?code=unverified");
   await expect(page).toHaveURL(/\/vendor\/sign-in\?error=google$/);
@@ -89,6 +94,21 @@ test("the student shell serves an offline fallback without caching orders", asyn
   await context.setOffline(true);
   await page.goto("/orders");
   await expect(page.getByRole("heading", { name: "You’re offline" })).toBeVisible();
+});
+
+test("a partially damaged legacy cart keeps usable items and asks the student to confirm their prices", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.setItem("campusbite.preview.v1", JSON.stringify({
+    cart: [null, { id: "mint-wrap", qty: 2 }, { id: "mint-wrap", qty: 1 }, { id: "ginger-tea", qty: -1 }],
+    checkout: { start: "unknown", note: null }, started: "old preview",
+  })));
+  await page.goto("/bag");
+  await expect(page.getByRole("link", { name: "Cart, 2 items" })).toBeVisible();
+  await page.getByRole("button", { name: "Accept updated prices" }).click();
+  await expect(page.getByRole("button", { name: "Accept updated prices" })).toHaveCount(0);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("campusbite.preview.v1")!));
+  expect(saved.cart).toEqual([{ id: "mint-wrap", qty: 2, unitPrice: 4500 }]);
+  expect(saved.checkout).toEqual({ start: 0, note: "" });
 });
 
 test("laptop shoppers can browse and check out using the desktop layout", async ({ page }) => {

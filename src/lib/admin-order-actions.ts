@@ -4,6 +4,14 @@ import { revalidatePath } from "next/cache";
 import { adminSession } from "./staff/access";
 import { orderUuid } from "./commerce";
 
+export async function retryReviewedWebhook(eventId: string) {
+  const admin = await adminSession(true);
+  if (!admin || typeof eventId !== "string" || eventId.length > 200) throw new Error("Administrator access required.");
+  const result = await admin.client.rpc("retry_reviewed_webhook", { target_event: eventId });
+  if (result.error) throw new Error("Could not schedule payment verification.");
+  revalidatePath("/admin/finance");
+}
+
 export async function reviewCase(id: string, revision: number, _state: {message:string}, form: FormData) {
   const admin = await adminSession(true);
   if (!admin || !orderUuid.test(id)) return {message:"Administrator access required.",error:true};

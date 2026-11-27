@@ -43,7 +43,7 @@ export async function startLiveCheckout(lines: CartLine[], start: number, note: 
   try {
     const db = commerceDb();
     const fingerprint = createHash("sha256").update(JSON.stringify({ detail, start })).digest("hex");
-    const existing = await db.from("commerce_orders").select("id,fingerprint,reserved_until,status,provider_order")
+    const existing = await db.from("commerce_orders").select("id,fingerprint,reserved_until,status,provider_order,provider_payment")
       .eq("student_id", actor.id).eq("request_id", requestId).maybeSingle();
     if (existing.error) throw existing.error;
     let order = existing.data;
@@ -57,7 +57,10 @@ export async function startLiveCheckout(lines: CartLine[], start: number, note: 
       order = result.data;
     }
     if (!order || order.fingerprint !== fingerprint) return { error: "Your bag changed. Start checkout again." };
-    if (order.status !== "unpaid") return { id: order.id };
+    if (order.status !== "unpaid") {
+      if (order.provider_payment) return { id: order.id };
+      return { error: "This checkout closed without a confirmed payment. Choose a pickup window again." };
+    }
     if (Date.parse(order.reserved_until) <= Date.now()) return { error: "Your payment window expired. Choose a pickup window again." };
     const control = await db.from("ordering_control").select("paused").eq("singleton", true).single();
     if (control.error) throw control.error;

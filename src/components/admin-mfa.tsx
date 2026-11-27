@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { beginAdminMfa, verifyAdminMfa } from "@/lib/admin-mfa";
+import { staffSignOut } from "@/lib/staff/actions";
 
 export function AdminMfa() {
   const [state,setState]=useState<Awaited<ReturnType<typeof beginAdminMfa>>>({message:""});
@@ -19,5 +20,7 @@ export function AdminMfa() {
     }}>
       {state.factor && <label className="field">Authenticator code<input name="code" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} inputMode="numeric" required /></label>}
       <button className="button" disabled={busy}>{state.factor ? "Verify code" : "Use authenticator app"}</button>
-    </form></section>;
+    </form>
+    <form action={staffSignOut.bind(null, "admin")}><button className="button secondary">Sign out</button></form>
+  </section>;
 }

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type Session } from "@supabase/supabase-js";
 import { portalOrigin } from "../auth-redirect";
 import { cookies } from "next/headers";
 import type { StaffDatabase } from "./database";
@@ -64,6 +64,13 @@ export function staffService() {
 export async function staffSession(writeCookies = false) {
   const client = await staffClient(writeCookies);
   return client ? verifiedStaffSession(client) : null;
+}
+
+export async function verifiedProviderSessionId(service: NonNullable<ReturnType<typeof staffService>>, session: Session) {
+  const { data, error } = await service.auth.getClaims(session.access_token);
+  if (error || !data || data.claims.sub !== session.user.id) return null;
+  return typeof data.claims.session_id === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(data.claims.session_id)
+    ? data.claims.session_id : null;
 }
 
 export async function verifiedStaffSession(client: NonNullable<Awaited<ReturnType<typeof staffClient>>>) {

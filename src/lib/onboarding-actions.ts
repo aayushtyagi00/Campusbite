@@ -5,7 +5,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { campusCourts } from "./commerce";
 import { orderUuid } from "./commerce";
-import { adminSession, allowAttempt } from "./staff/access";
+import { adminSession, allowAttempt, allowNetworkAttempt } from "./staff/access";
 import { staffService } from "./staff/supabase";
 import { studentClient } from "./student-auth";
 import { applicantSession } from "./vendor-applicant";
@@ -21,13 +21,16 @@ export async function applicantCode(verify: boolean, form: FormData) {
   const db = staffService();
   if (!auth || !db || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail("Enter a valid contact email.");
   if (verify) {
+    if (!/^\d{6,10}$/.test(field(form, "code"))) return fail("Enter the numeric code from your email.");
+    if (!await allowNetworkAttempt(db, "applicant-verify-network", 90, 900)) return fail("Please wait before trying another code.");
     if (!await allowAttempt(db, "applicant-verify", email, 8, 900)) return fail("Please wait before trying another code.");
     const { error } = await auth.auth.verifyOtp({ email, token: field(form, "code"), type: "email" });
     if (error) return fail("That email code is invalid or expired.");
     const name = field(form, "shop_name").slice(0, 100);
     redirect("/vendor/onboarding" + (name ? "?name=" + encodeURIComponent(name) : ""));
   }
-  if (!await allowAttempt(db, "applicant-email", email, 1, 60) || !await allowAttempt(db, "applicant-hour", email, 5, 3600))
+  if (!await allowNetworkAttempt(db, "applicant-email-network", 60, 900) ||
+      !await allowAttempt(db, "applicant-email", email, 1, 60) || !await allowAttempt(db, "applicant-hour", email, 5, 3600))
     return fail("Please wait before requesting another email.");
   const { error } = await auth.auth.signInWithOtp({ email });
   return error ? fail("Could not send the verification code.") : { message: "Enter the code sent to your contact email." };
@@ -82,6 +85,7 @@ export async function changeDocument(id: string, revision: number, removePath: s
     const file = form.get("document");
     if (documents.length >= 4 || !(file instanceof File) || file.size > 3 * 1024 * 1024 ||
       await file.slice(0, 5).text() !== "%PDF-") return fail("Choose a PDF up to 3 MB. Each application can hold four documents.");
+    if (!await allowAttempt(actor.db, "applicant-upload", actor.id, 20, 3600)) return fail("Please wait before uploading another document.");
     uploaded = id + "/" + randomUUID() + ".pdf";
     if ((await storage.upload(uploaded, file, { contentType: "application/pdf" })).error) return fail("The document upload failed.");
     documents = [...documents, { path: uploaded, name: file.name.slice(0, 150) }];

@@ -5,7 +5,7 @@ import { unstable_cache } from "next/cache";
 import { foodCourts, type FoodCourt } from "./campus";
 import type { FoodCourtId, Fulfillment, Stall } from "./campus";
 import type { StudentOrderHistory } from "./student-order-types";
-import { studentAccount, studentIdentity } from "./student-auth";
+import { studentIdentity } from "./student-auth";
 import type { CommerceMenuRow } from "./staff/database";
 
 export const commerceDb = () => {
@@ -66,7 +66,7 @@ export async function liveStorefronts() {
 
 export async function liveOrderHistory(includeOrders: boolean): Promise<StudentOrderHistory> {
   try {
-    const actor = includeOrders ? await studentAccount() : await studentIdentity();
+    const actor = await studentIdentity();
     if (!actor) return { signedIn: false, orders: [] };
     if (!includeOrders) return { signedIn: true, orders: [] };
     const { data, error } = await commerceDb().from("commerce_orders")

@@ -51,6 +51,7 @@ type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
 export type StaffDatabase = {
   public: {
     Tables: {
+      campus_reviews: Table<{ id: string; name: string; rating: number; comment: string; created_at: string }>;
       staff_admins: Table<{ email: string }>;
       vendor_shops: Table<VendorShop, { name: string }>;
       vendor_access: Table<VendorAccess>;
@@ -65,6 +66,13 @@ export type StaffDatabase = {
       set_ordering_pause: { Args:{value:boolean}; Returns:undefined };
       review_order_case: { Args:{target:string;version:number;state:string;reply:string;request_refund:boolean}; Returns:boolean };
       campusbite_is_admin: { Args: Record<never, never>; Returns: boolean };
+      campusbite_owner_state: { Args: Record<never, never>; Returns: "denied" | "challenge" | "granted" };
+      end_staff_session: { Args: Record<never, never>; Returns: undefined };
+      register_admin_session: { Args: { login_session: string; login_user: string; google_subject: string }; Returns: boolean };
+      campusbite_vendor_session: { Args: Record<never, never>; Returns: boolean };
+      register_vendor_session: { Args: { login_session: string; login_user: string; login_email: string; google_subject?: string }; Returns: boolean };
+      confirm_vendor_password_setup: { Args: { login_session: string; login_user: string; login_email: string }; Returns: boolean };
+      retry_reviewed_webhook: { Args: { target_event: string }; Returns: boolean };
       campusbite_consume_attempt: { Args: { p_bucket: string; p_key_hash: string; p_limit: number; p_seconds: number }; Returns: boolean };
       campusbite_grant_vendor_access: { Args: { p_shop_id: string; p_email: string; p_role: VendorRole }; Returns: undefined };
       vendor_application_summary: { Args: { target_shop:string }; Returns: {status:ApplicationStatus;agreed_at:string|null;agreement_version:string|null;document_count:number}|null };

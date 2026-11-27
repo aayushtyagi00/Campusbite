@@ -4,9 +4,111 @@ import { expect, test } from "@playwright/test";
 
 test.use({ baseURL: "http://127.0.0.1:3109" });
 
+test("public requests have browser protections and bounded bodies", async ({ request }) => {
+  const page = await request.get("/auth/student/callback", { maxRedirects: 0 });
+  expect(page.headers()["x-content-type-options"]).toBe("nosniff");
+  const home = await request.get("http://127.0.0.1:3108/");
+  expect(home.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
+  for (const path of ["/api/reviews", "/api/pickup-availability"]) {
+    const response = await request.post(path, { data: { comment: "a".repeat(8192) } });
+    expect(response.status()).toBe(413);
+  }
+});
+
+test("reviews verify the challenge before charging the client and site quotas", async ({ request }) => {
+  const review = { name: "Visitor", rating: 4, comment: "Good pickup." };
+  let granted = true;
+  let writes = 0;
+  const calls: { p_bucket: string; p_key_hash: string }[] = [];
+  const headers = { "x-real-ip": "192.0.2.1" };
+  const fixture = createServer(async (req, res) => {
+    const path = new URL(req.url!, "http://localhost").pathname;
+    res.setHeader("content-type", "application/json");
+    if (path.endsWith("/rpc/campusbite_consume_attempt")) {
+      let raw = "";
+      for await (const chunk of req) raw += chunk;
+      calls.push(JSON.parse(raw));
+      return res.end(JSON.stringify(granted));
+    }
+    if (path.endsWith("/campus_reviews") && req.method === "POST") {
+      writes++;
+      return res.end(JSON.stringify({ ...review, id: "fixture", createdAt: new Date().toISOString() }));
+    }
+    return res.writeHead(404).end("{}");
+  });
+  await new Promise<void>((resolve, reject) => fixture.once("error", reject).listen(3110, "127.0.0.1", resolve));
+  try {
+    for (const challenge of [undefined, "signup-fixture", "other-host-fixture"]) {
+      expect((await request.post("/api/reviews", { headers, data: { ...review, challenge } })).status()).toBe(403);
+    }
+    expect(writes).toBe(0);
+    expect(calls).toHaveLength(0);
+    const data = { ...review, challenge: "review-fixture" };
+    expect((await request.post("/api/reviews", { headers, data })).status()).toBe(201);
+    expect((await request.post("/api/reviews", { headers: { "x-real-ip": "192.0.2.2" }, data })).status()).toBe(201);
+    expect((await request.post("/api/reviews", { data })).status()).toBe(201);
+    expect(calls.map(c=>c.p_bucket)).toEqual(["public-reviews-network","public-reviews-total","public-reviews-network","public-reviews-total","public-reviews-total"]);
+    expect(calls[0].p_key_hash).not.toBe(calls[2].p_key_hash);
+    granted = false;
+    expect((await request.post("/api/reviews", { headers, data })).status()).toBe(429);
+    expect(writes).toBe(3);
+  } finally { await new Promise<void>(resolve => fixture.close(() => resolve())); }
+});
+
+test("signup passes form verification before requesting an email", async ({page}) => {
+  let signups = 0;
+  const quotas: string[] = [];
+  const fixture = createServer(async (req,res) => {
+    res.setHeader("content-type","application/json");
+    const path = new URL(req.url!, "http://localhost").pathname;
+    if (path.endsWith("/rpc/campusbite_consume_attempt")) {
+      let raw = "";
+      for await (const chunk of req) raw += chunk;
+      quotas.push(JSON.parse(raw).p_bucket);
+      return res.end("true");
+    }
+    if (path === "/auth/v1/signup") {
+      signups++;
+      return res.end(JSON.stringify({ id:"00000000-0000-4000-8000-000000000508", email:"new@example.test" }));
+    }
+    return res.end("[]");
+  });
+  await new Promise<void>((resolve,reject)=>fixture.once("error",reject).listen(3110,"127.0.0.1",resolve));
+  try {
+    await page.route("https://challenges.cloudflare.com/turnstile/**", route=>route.fulfill({
+      contentType:"application/javascript", body:`window.turnstile = {
+        render(element, options) {
+          const field = document.createElement("input");
+          field.name = "cf-turnstile-response";
+          field.setAttribute("aria-label", "Fixture verification");
+          element.append(field);
+          return "widget";
+        },
+        remove() {}
+      }`,
+    }));
+    await page.setExtraHTTPHeaders({ "x-real-ip": "192.0.2.3" });
+    await page.goto("/sign-in");
+    await page.getByRole("button",{ name:"Create account" }).click();
+    await page.getByLabel("Display name").fill("Campus Student");
+    await page.getByLabel("Email",{exact:true}).fill("new@example.test");
+    await page.getByLabel("Password",{exact:true}).fill("fixture-password");
+    await page.getByLabel("Confirm password").fill("fixture-password");
+    await page.getByRole("button",{name:"Create account"}).click();
+    await expect(page.getByText("Complete the verification and try creating your account again.")).toBeVisible();
+    expect(signups).toBe(0);
+    expect(quotas).toEqual([]);
+    await page.getByLabel("Fixture verification").fill("signup-fixture");
+    await page.getByRole("button",{name:"Create account"}).click();
+    await expect(page.getByRole("heading",{name:"Confirm your email"})).toBeVisible();
+    expect(signups).toBe(1);
+    expect(quotas).toEqual(["student-sign-up-network","student-sign-up"]);
+  } finally { await new Promise<void>(resolve=>fixture.close(()=>resolve())); }
+});
+
 test("a signed capture webhook verifies the provider payment before recording its event", async ({ request }) => {
   const events: unknown[] = [];
-  let queued: unknown;
+  const queued = new Set<string>();
   const fixture = createServer(async (req,res) => {
     const path = new URL(req.url!, "http://localhost").pathname;
     res.setHeader("Content-Type","application/json");
@@ -15,9 +117,12 @@ test("a signed capture webhook verifies the provider payment before recording it
       if (req.method==="POST") {
         let body="";
         for await (const chunk of req) body+=chunk;
-        queued=JSON.parse(body);
+        const entry=JSON.parse(body);
+        if (queued.has(entry.event_id)) return res.end("[]");
+        queued.add(entry.event_id);
+        return res.end(JSON.stringify([entry]));
       }
-      return res.end(JSON.stringify(queued));
+      return res.end(JSON.stringify([]));
     }
     if (path === "/rest/v1/commerce_orders") return res.end(JSON.stringify({provider_payment:null,amount_paise:100}));
     if (path === "/rest/v1/rpc/commerce_apply_razorpay_event") {
@@ -38,8 +143,23 @@ test("a signed capture webhook verifies the provider payment before recording it
       "x-razorpay-event-id":"fixture-delivery",
     }});
     expect(response.status()).toBe(204);
-    expect(events).toEqual([{event_id:"webhook:fixture-delivery",kind:"payment.captured",payment_id:"pay_Captured",
+    const retry = await request.post("/api/payments/razorpay", {data, headers: {
+      "x-razorpay-signature": createHmac("sha256","payment-webhook-fixture").update(data).digest("hex"),
+    }});
+    expect(retry.status()).toBe(204);
+    expect(events).toEqual([{event_id:"entity:test:payment.captured:pay_Captured",kind:"payment.captured",payment_id:"pay_Captured",
       gateway_order:"order_Fixture",amount:100,currency:"INR",key_mode:"test"}]);
+    for (const suffix of ["Partial","Split"]) {
+      const data = JSON.stringify({event:"refund.processed",payload:{refund:{entity:{
+        id:"rfnd_"+suffix,payment_id:"pay_"+suffix,status:"processed",amount:40,currency:"INR",
+      }}}});
+      const response=await request.post("/api/payments/razorpay",{data,headers:{
+        "x-razorpay-signature":createHmac("sha256","payment-webhook-fixture").update(data).digest("hex"),
+      }});
+      expect(response.status()).toBe(suffix==="Split" ? 204 : 202);
+    }
+    expect(events.slice(1)).toEqual([{event_id:"entity:test:refund.processed:rfnd_Split",kind:"refund.processed",
+      payment_id:"pay_Split",gateway_order:null,amount:100,currency:"INR",key_mode:"test"}]);
   } finally {
     await new Promise<void>(resolve => fixture.close(() => resolve()));
   }
@@ -82,11 +202,12 @@ test("the scheduled worker recovers a captured payment after the browser closes"
 });
 
 test("admin test checkout confirms capture and distinguishes authorization", async ({ page, context }) => {
-  const user = { id:"00000000-0000-4000-8000-000000000085", email:"admin@example.test", email_confirmed_at:"2026-11-19T00:00:00Z" };
+  const user = { id:"00000000-0000-4000-8000-000000000085", email:"tyagiaayush3030@gmail.com", email_confirmed_at:"2026-11-19T00:00:00Z" };
   const fixture = createServer((req,res) => {
     res.setHeader("Content-Type","application/json");
     if (req.url === "/auth/v1/user") return res.end(JSON.stringify(user));
-    if (req.url === "/rest/v1/rpc/campusbite_is_admin" || req.url === "/rest/v1/rpc/campusbite_consume_attempt") return res.end("true");
+    if (req.url === "/rest/v1/rpc/campusbite_owner_state") return res.end('"granted"');
+    if (req.url === "/rest/v1/rpc/campusbite_consume_attempt") return res.end("true");
     return res.writeHead(404).end("{}");
   });
   await new Promise<void>((resolve,reject) => fixture.once("error",reject).listen(3110,"127.0.0.1",resolve));
@@ -215,13 +336,13 @@ test("an applicant saves and reopens a draft, attaches a PDF, and submits the sa
 
 test("admin publishes a new shop from Current Vendors and its public menu opens", async ({ page, context }) => {
   const shop = { id:"00000000-0000-4000-8000-000000000081", name:"Campus Dosa", created_at:"2026-11-19T00:00:00Z" };
-  const user = { id:"00000000-0000-4000-8000-000000000082",email:"admin@example.test",email_confirmed_at:shop.created_at };
+  const user = { id:"00000000-0000-4000-8000-000000000082",email:"tyagiaayush3030@gmail.com",email_confirmed_at:shop.created_at };
   let listing: Record<string,unknown> | undefined;
   const fixture = createServer(async (req,res) => {
     const url = new URL(req.url!,"http://localhost");
     res.setHeader("Content-Type","application/json");
     if (url.pathname === "/auth/v1/user") return res.end(JSON.stringify(user));
-    if (url.pathname === "/rest/v1/rpc/campusbite_is_admin") return res.end("true");
+    if (url.pathname === "/rest/v1/rpc/campusbite_owner_state") return res.end('"granted"');
     if (url.pathname === "/rest/v1/rpc/save_vendor_storefront") {
       let raw="";
       for await (const chunk of req) raw+=chunk;
@@ -261,7 +382,7 @@ test("admin publishes a new shop from Current Vendors and its public menu opens"
 });
 
 test("admin navigation keeps the current workspace visible during a slow shop query", async ({ page, context }) => {
-  const user = { id: "00000000-0000-4000-8000-000000000002", email: "admin@example.test", email_confirmed_at: "2026-01-01T00:00:00Z" };
+  const user = { id: "00000000-0000-4000-8000-000000000002", email: "tyagiaayush3030@gmail.com", email_confirmed_at: "2026-01-01T00:00:00Z" };
   let releaseShops = () => {};
   const holdShops = new Promise<void>(resolve => { releaseShops = resolve; });
   let waiting = false;
@@ -273,7 +394,7 @@ test("admin navigation keeps the current workspace visible during a slow shop qu
     const path = req.url?.split("?")[0];
     res.setHeader("Content-Type", "application/json");
     if (path === "/auth/v1/user") return res.end(JSON.stringify(user));
-    if (path === "/rest/v1/rpc/campusbite_is_admin") return res.end("true");
+    if (path === "/rest/v1/rpc/campusbite_owner_state") return res.end('"granted"');
     const query = new URL(req.url!, "http://localhost").searchParams;
     let body = "";
     for await (const chunk of req) body += chunk;

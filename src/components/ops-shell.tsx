@@ -32,7 +32,7 @@ export function OpsShell({ area, path, email, shop, staffOnly, children }: { are
         <NavigationHint /></Link>}
       </nav>
       <Link className="text-link ops-return" href={area === "vendor" ? "/vendor" : "/"}>{area === "vendor" ? "Vendor homepage" : "Student website"}<NavigationHint /></Link>
-      <form action={staffSignOut} className="ops-sign-out"><button className="button secondary compact">Sign out</button></form>
+      <form action={staffSignOut.bind(null, area)} className="ops-sign-out"><button className="button secondary compact">Sign out</button></form>
     </aside>
     <main className="ops-main" id="main">
       <div className="staff-identity"><ShieldCheck size={17} aria-hidden="true" /><span>{email}</span></div>

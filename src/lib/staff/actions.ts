@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { clearDeviceAlerts } from "../push-device";
-import { adminSession, allowAttempt, invited, invitedUser, isStaffArea, staffDashboard } from "./access";
-import { clearStaffCookies, clearStaffOAuthCookies, staffAuthAttempt, staffClient, staffOAuthAreaCookie, staffOAuthCookieName, staffOrigin, staffService, staffSession } from "./supabase";
+import { registerVendorLogin, vendorSession } from "./vendor-session";
+import { adminSession, allowAttempt, allowNetworkAttempt, vendorInvited, invitedVendorUser, isStaffArea, staffDashboard } from "./access";
+import { clearStaffCookies, clearStaffOAuthCookies, staffAuthAttempt, staffClient, staffOAuthAreaCookie, staffOAuthCookieName, staffOrigin, staffService, verifiedProviderSessionId } from "./supabase";
 import { vendorRoles, type StaffArea, type VendorRole } from "./database";
 
 type FormState = { message: string; error?: boolean };
@@ -30,16 +31,18 @@ function uuid(value: string) {
 function failure(message: string): FormState { return { message, error: true }; }
 
 export async function signInWithStaffPassword(area: StaffArea, _previous: FormState, form: FormData): Promise<FormState> {
+  if (area !== "vendor") return failure("Use Google to sign in to the admin portal.");
   const email = emailField(form);
   const password = form.get("password");
   if (!email || typeof password !== "string" || !password || password.length > 512) return failure(invalidCredentials);
   const service = staffService();
   const attempt = staffAuthAttempt();
-  if (!service || !attempt || !isStaffArea(area)) return failure(unavailable);
-  if (!await invited(service, area, email) || !await allowAttempt(service, "staff-password", email, 12, 900)) return failure(invalidCredentials);
+  if (!service || !attempt) return failure(unavailable);
+  if (!await allowNetworkAttempt(service, "staff-password-network", 90, 900) ||
+      !await vendorInvited(service, email) || !await allowAttempt(service, "staff-password", email, 12, 900)) return failure(invalidCredentials);
   const { data, error } = await attempt.auth.signInWithPassword({ email, password });
   if (error || !data.session) return failure(invalidCredentials);
-  if (!await invitedUser(service, area, data.user, email)) {
+  if (!await invitedVendorUser(service, data.user, email) || !await registerVendorLogin(service, data.session)) {
     await attempt.auth.signOut({ scope: "local" });
     return failure(invalidCredentials);
   }
@@ -78,12 +81,13 @@ export async function startStaffGoogle(area: StaffArea, _previous: FormState, _f
 type CodeState = FormState & { email?: string };
 
 export async function requestStaffPasswordCode(area: StaffArea, _previous: CodeState, form: FormData): Promise<CodeState> {
+  if (area !== "vendor") return failure("Use Google to sign in to the admin portal.");
   const email = emailField(form);
   if (!email) return failure("Enter a valid email address.");
   const service = staffService();
   const client = staffAuthAttempt();
-  if (!service || !client || !isStaffArea(area)) return failure(unavailable);
-  if (await invited(service, area, email) &&
+  if (!service || !client) return failure(unavailable);
+  if (await allowNetworkAttempt(service, "staff-code-network", 60, 900) && await vendorInvited(service, email) &&
     await allowAttempt(service, "staff-code-cooldown", email, 1, 60) &&
     await allowAttempt(service, "staff-code-hour", email, 5, 3600)) {
     const { error } = await client.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
@@ -93,6 +97,7 @@ export async function requestStaffPasswordCode(area: StaffArea, _previous: CodeS
 }
 
 export async function saveStaffPassword(area: StaffArea, _previous: FormState, form: FormData): Promise<FormState> {
+  if (area !== "vendor") return failure("Use Google to sign in to the admin portal.");
   const email = emailField(form);
   const token = field(form, "code");
   const password = form.get("password");
@@ -103,19 +108,30 @@ export async function saveStaffPassword(area: StaffArea, _previous: FormState, f
   if (password !== form.get("confirm_password")) return failure("The passwords do not match.");
   const service = staffService();
   const client = staffAuthAttempt();
-  if (!service || !client || !isStaffArea(area)) return failure(unavailable);
-  if (!await invited(service, area, email) || !await allowAttempt(service, "staff-verify", email, 8, 900)) {
+  if (!service || !client) return failure(unavailable);
+  if (!await allowNetworkAttempt(service, "staff-verify-network", 90, 900) ||
+      !await vendorInvited(service, email) || !await allowAttempt(service, "staff-verify", email, 8, 900)) {
     return failure(invalidCode);
   }
   const { data, error } = await client.auth.verifyOtp({ email, token, type: "email" });
   if (error || !data.user || !data.session) return failure(invalidCode);
-  if (!await invitedUser(service, area, data.user, email)) {
+  if (!await invitedVendorUser(service, data.user, email)) {
+    await client.auth.signOut({ scope: "local" });
+    return failure(invalidCode);
+  }
+  const loginSession = await verifiedProviderSessionId(service, data.session);
+  if (!loginSession) {
     await client.auth.signOut({ scope: "local" });
     return failure(invalidCode);
   }
   const { error: updateError } = await client.auth.updateUser({ password });
+  const confirmed = !updateError && await service.rpc("confirm_vendor_password_setup", {
+    login_session: loginSession, login_user: data.user.id, login_email: email,
+  });
   await client.auth.signOut({ scope: updateError ? "local" : "global" });
   if (updateError) return failure("The password could not be set. Choose a different password and request a new code.");
+  if (!confirmed || confirmed.error || confirmed.data !== true)
+    return failure("Password setup could not be confirmed. Request a new code and try again.");
   return { message: "Password saved. You can now sign in with your email and password." };
 }
 
@@ -148,7 +164,7 @@ export async function saveVendorAccess(_previous: FormState, form: FormData): Pr
 async function teamSession(area: StaffArea, shop: string) {
   if (area === "admin") return adminSession(true);
   if (area !== "vendor") return null;
-  const session = await staffSession(true);
+  const session = await vendorSession(true);
   if (!session) return null;
   const grant = await session.client.from("vendor_access").select("role")
     .eq("shop_id", shop).eq("email", session.email).maybeSingle();
@@ -184,9 +200,9 @@ export async function editTeamMember(area: StaffArea, operation: "add" | "change
   return { message: operation === "revoke" ? "Access revoked." : operation === "add" ? "Team member added." : "Role updated." };
 }
 
-export async function staffSignOut() {
-  try { await clearDeviceAlerts("staff"); } catch { /* Staff can still end their session while the notification database is offline. */ }
+export async function staffSignOut(area: StaffArea) {
   const client = await staffClient(true);
+  await Promise.allSettled([clearDeviceAlerts("staff"), client?.rpc("end_staff_session")]);
   try {
     if (client) await client.auth.signOut({ scope: "local" });
   } catch {
@@ -195,5 +211,5 @@ export async function staffSignOut() {
     await clearStaffCookies();
     await clearStaffOAuthCookies();
   }
-  redirect("/vendor");
+  redirect(area === "admin" ? "/admin/sign-in" : "/vendor");
 }

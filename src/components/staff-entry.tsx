@@ -44,7 +44,8 @@ export function StaffSignIn({ area, googleError }: { area: StaffArea; googleErro
     <div className="narrow auth">
       <Back href={area === "vendor" ? "/vendor" : "/"}>{area === "vendor" ? "Vendor homepage" : "CampusBite"}</Back>
       <div className="page-heading"><h1>{area === "vendor" ? "Vendor sign in" : "Admin sign in"}</h1>
-        <p>Use your approved email to continue with Google or sign in with a password. If this is your first time, you can set your password below.</p></div>
+        <p>{area === "admin" ? "Sign in with the owner's Google account, then verify your authenticator code." :
+          "Use your approved email to continue with Google or sign in with a password. If this is your first time, you can set your password below."}</p></div>
       <section className="panel panel-pad stack">
         {!configured && <Notice>The sign-in service is unavailable until the portal is configured.</Notice>}
         {googleError && <Notice>Google sign-in could not be completed. Choose an account with approved access and try again.</Notice>}

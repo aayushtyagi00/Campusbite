@@ -21,8 +21,10 @@ export function StaffForm({ action, label, children, secondary = false, disabled
 }
 
 export function StaffSignInForm({ area, disabled, googleDisabled }: { area: StaffArea; disabled: boolean; googleDisabled: boolean }) {
+  const google = <StaffForm action={startStaffGoogle.bind(null, area)} label="Continue with Google" secondary={area === "vendor"} disabled={googleDisabled} />;
+  if (area === "admin") return google;
   return <div className="stack">
-    <StaffForm action={startStaffGoogle.bind(null, area)} label="Continue with Google" secondary disabled={googleDisabled} />
+    {google}
     <div className="staff-login-divider"><span>or sign in with email</span></div>
     <StaffForm action={signInWithStaffPassword.bind(null, area)} label="Sign in" disabled={disabled}>
       <label className="field">Email address<input name="email" type="email" autoComplete="username" required maxLength={254} /></label>

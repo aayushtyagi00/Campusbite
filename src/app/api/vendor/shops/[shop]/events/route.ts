@@ -1,4 +1,4 @@
-import { staffSession } from "@/lib/staff/supabase";
+import { vendorSession } from "@/lib/staff/vendor-session";
 import { orderUuid } from "@/lib/commerce";
 
 export const maxDuration = 60;
@@ -6,7 +6,7 @@ export const maxDuration = 60;
 export async function GET(request: Request, {params}: {params:Promise<{shop:string}>}) {
   const {shop} = await params;
   if (!orderUuid.test(shop)) return new Response(null,{status:400});
-  const session = await staffSession(true);
+  const session = await vendorSession(true);
   if (!session) return new Response(null,{status:401});
   const {client,email} = session;
   const grant = await client.from("vendor_access").select("role").eq("shop_id",shop).eq("email",email).maybeSingle();

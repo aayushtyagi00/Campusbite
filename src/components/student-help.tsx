@@ -63,6 +63,7 @@ export function StudentHelp({ section }: { section: keyof typeof pages }) {
       <section className="panel panel-pad stack">
         <h2>Browser storage</h2>
         <p>CampusBite stores your cart and selected food court in your browser. A session cookie keeps you signed in.</p>
+        <p>When a verification widget appears during signup, password recovery or review submission, Cloudflare Turnstile processes browser and network information to check for automated requests.</p>
       </section>
       <section className="panel panel-pad stack">
         <h2>Accounts, orders and payments</h2>

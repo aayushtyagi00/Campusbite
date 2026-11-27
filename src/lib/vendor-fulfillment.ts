@@ -2,14 +2,16 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { weekdays, type WeeklyHours } from "./campus";
-import { staffSession, staffService } from "./staff/supabase";
+import { staffService } from "./staff/supabase";
+import { vendorSession } from "./staff/vendor-session";
+import { allowAttempt } from "./staff/access";
 import { orderUuid } from "./commerce";
 
 export async function fulfillOrder(id: string, next: string, code: string, reason = "") {
   if (!orderUuid.test(id) || !["accepted","rejected","preparing","ready","collected"].includes(next)
     || (next === "collected" && !/^\d{6}$/.test(code))) return { error: "Check the pickup code and order action." };
-  if (next === "rejected" && (!reason.trim() || reason.trim().length > 300)) return { error: "Enter a reason of up to 300 characters." };
-  const session = await staffSession(true);
+  if (next === "rejected" && (typeof reason !== "string" || !reason.trim() || reason.trim().length > 300)) return { error: "Enter a reason of up to 300 characters." };
+  const session = await vendorSession(true);
   if (!session) return { error: "Sign in again to update this order." };
   const result = next === "rejected"
     ? await session.client.rpc("vendor_reject_order", { order_id: id, reason: reason.trim() })
@@ -27,7 +29,7 @@ function refreshCatalog(page: string) {
 }
 
 export async function saveAvailability(shop: string, revision: number, _: FormState, form: FormData) {
-  const session = await staffSession(true);
+  const session = await vendorSession(true);
   if (!session) return failure("Sign in again.");
   const opening = field(form,"opening"), closing = field(form,"closing");
   const slots = Number(field(form,"slots")), basket = Number(field(form,"basket"));
@@ -59,7 +61,7 @@ export async function saveAvailability(shop: string, revision: number, _: FormSt
 }
 
 export async function savePickupPolicy(shop:string, revision:number, _:FormState, form:FormData) {
-  const session=await staffSession(true);
+  const session=await vendorSession(true);
   if (!session) return failure("Sign in again.");
   const value=(name:string)=>Number(field(form,name));
   const {error}=await session.client.rpc("vendor_set_pickup_policy",{target_shop:shop,expected_revision:revision,
@@ -71,7 +73,7 @@ export async function savePickupPolicy(shop:string, revision:number, _:FormState
 }
 
 export async function saveCategory(shop: string, previous: string, _: FormState, form: FormData) {
-  const session = await staffSession(true);
+  const session = await vendorSession(true);
   if (!session) return failure("Sign in again.");
   const name = field(form,"name");
   if (!name || name.length>60 || name.toLowerCase()==="all") return failure("Choose a name of 1–60 characters other than All.");
@@ -82,7 +84,7 @@ export async function saveCategory(shop: string, previous: string, _: FormState,
 }
 
 export async function writeMenuItem(shop: string, itemId: string | null, revision: number, _: FormState, form: FormData) {
-  const session = await staffSession(true);
+  const session = await vendorSession(true);
   if (!session) return failure("Sign in again.");
   const name = field(form,"name"), description = field(form,"description"), diet = field(form,"diet");
   const priceText = field(form,"price"), price = Math.round(Number(priceText)*100), prep = Number(field(form,"prep"));
@@ -98,11 +100,13 @@ export async function writeMenuItem(shop: string, itemId: string | null, revisio
     return failure("Enter a whole stock count between 0 and 1,000,000, or leave it blank for unlimited stock.");
   const upload = form.get("upload");
   let uploadedPath: string | undefined;
-  const storage = staffService()?.storage.from("menu-photos");
+  const service = staffService();
+  const storage = service?.storage.from("menu-photos");
   if (upload instanceof File && upload.size) {
-    if (!storage || upload.size>3145728) return failure("Choose a JPG, PNG or WebP image under 3 MB.");
+    if (!service || !storage || upload.size>3145728) return failure("Choose a JPG, PNG or WebP image under 3 MB.");
     const access = await session.client.from("vendor_access").select("role").eq("shop_id",shop).eq("email",session.email).maybeSingle();
     if (!access.data || access.data.role === "staff") return failure("Shop management access required.");
+    if (!await allowAttempt(service, "menu-photo-upload", session.email, 60, 3600)) return failure("Please wait before uploading another photo.");
     const bytes = Buffer.from(await upload.arrayBuffer());
     const ext = bytes.subarray(0,3).toString("hex")==="ffd8ff" ? "jpg" :
       bytes.subarray(0,8).toString("hex")==="89504e470d0a1a0a" ? "png" :

@@ -5,12 +5,10 @@ import { AccessManagement } from "@/components/access-management";
 import { AdminOverview, VendorApplications } from "@/components/staff-admin";
 import { StaffSignIn } from "@/components/staff-entry";
 import { Notice } from "@/components/ui";
-import { adminSession } from "@/lib/staff/access";
+import { ownerSession } from "@/lib/staff/access";
 import { liveCommerce } from "@/lib/student-auth";
 import { CurrentVendors, VendorRecord, ApplicationReview } from "@/components/current-vendors";
 import { AdminMfa } from "@/components/admin-mfa";
-import { staffSession, staffService } from "@/lib/staff/supabase";
-import { invited } from "@/lib/staff/access";
 import { AdminFinance } from "@/components/admin-finance";
 import { RecentCommerceOrders } from "@/components/recent-commerce-orders";
 import { AdminPaymentTest } from "@/components/admin-payment-test";
@@ -37,15 +35,10 @@ export default async function Page({ params, searchParams }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { screen = [] } = await params;
-  const session = await adminSession();
-  if (!session || screen[0]==="security") {
-    const staff=await staffSession();
-    const service=staffService();
-    if (staff && service && await invited(service,"admin",staff.email)) {
-      if (screen[0]==="security") return <main className="narrow transaction-page"><AdminMfa /></main>;
-      if (!session) redirect("/admin/security");
-    }
-  }
+  const session = await ownerSession();
+  if (session && screen.length === 1 && screen[0] === "security")
+    return <main className="narrow transaction-page"><AdminMfa /></main>;
+  if (session && !session.assured) redirect("/admin/security");
   if (screen.length === 1 && screen[0] === "sign-in") {
     if (session) redirect("/admin");
     return <StaffSignIn area="admin" googleError={(await searchParams).error === "google"} />;

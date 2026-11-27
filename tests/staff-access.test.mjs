@@ -12,10 +12,7 @@ const ids = {
   unverified: "10000000-0000-0000-0000-000000000006",
 };
 
-test("PostgreSQL enforces staff access independently of the web UI", async t => {
-  const db = new PGlite();
-  t.after(() => db.close());
-  await db.exec(`
+const authSchema = `
     create role anon;
     create role authenticated;
     create role service_role bypassrls;
@@ -24,7 +21,30 @@ test("PostgreSQL enforces staff access independently of the web UI", async t => 
     create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
     create function auth.uid() returns uuid language sql stable
       as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-  `);
+  `;
+
+test("the legacy bootstrap keeps both portals closed until the current migrations are installed", async t => {
+  const db = new PGlite();
+  t.after(() => db.close());
+  await db.exec(authSchema);
+  await db.exec(await readFile(new URL("../supabase/setup-campus-admin.sql",import.meta.url),"utf8"));
+  const email = "tyagiaayush3030@gmail.com";
+  await db.query("insert into auth.users values($1,$2,now())",[ids.admin,email]);
+  const { rows: [shop] } = await db.query("insert into vendor_shops(name) values ('Fixture') returning id");
+  await db.query("insert into vendor_access(shop_id,email,role) values($1,$2,'owner')",[shop.id,email]);
+  await db.transaction(async tx => {
+    await tx.exec("set local role authenticated");
+    await tx.query("select set_config('request.jwt.claim.sub',$1,true)",[ids.admin]);
+    assert.equal((await tx.query("select campusbite_is_admin() as ok")).rows[0].ok,false);
+    assert.deepEqual((await tx.query("select * from vendor_access")).rows,[]);
+    assert.deepEqual((await tx.query("select * from vendor_shops")).rows,[]);
+  });
+});
+
+test("PostgreSQL enforces staff access independently of the web UI", async t => {
+  const db = new PGlite();
+  t.after(() => db.close());
+  await db.exec(authSchema);
   await db.exec(await readFile(new URL("../supabase/migrations/202611180001_staff_access.sql", import.meta.url), "utf8"));
   await db.exec(await readFile(new URL("../supabase/migrations/202611190001_shop_owner_team.sql", import.meta.url), "utf8"));
   for (const [actor, id] of Object.entries(ids)) {

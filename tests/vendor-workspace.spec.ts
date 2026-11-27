@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { createHmac, randomUUID } from "node:crypto";
 import { pickupSlots, type Stall } from "../src/lib/campus";
 import { expect, test } from "@playwright/test";
 
@@ -23,7 +24,11 @@ test("student pickup choices follow IST weekdays, specific closures and historic
 test("vendor staff can refresh and act on a shop order, and managers can edit the shop",async ({page,context})=>{
   const shop="00000000-0000-4000-8000-000000000501", id="00000000-0000-4000-8000-000000000503";
   const user={id:"00000000-0000-4000-8000-000000000502",email:"vendor@example.test",email_confirmed_at:new Date().toISOString()};
-  let role="manager", blocked=false;
+  const student={id:randomUUID(),email:"student@example.test",email_confirmed_at:new Date().toISOString()};
+  type Reservation = { id:string; fingerprint:string; status:string; reserved_until:string; provider_order:string|null; provider_payment:string|null; amount_paise:number };
+  const reservations = new Map<string,Reservation>();
+  let studentCaptures=0;
+  let role="manager", blocked=false, registered=false;
   const store={slug:"test-shop",display_name:"Campus Kitchen",court:"unimall",location:"Test counter",photo:"",cuisine:"Tea",shop_id:shop,opens:"09:00",closes:"17:00",capacity:3,basket_limit:8,closed_dates:[],vendor_paused:false,revision:0,
     menu_categories:["Meals","Wraps","Drinks","Snacks"],weekly_hours:{},pickup_minutes:10,enabled:true,published:true,standing:"approved",payment_status:"verified"};
   const order={id,shop_id:shop,reference:"CB-WORKSHOP",status:"awaiting",pickup_at:new Date(Date.now()+1800000).toISOString(),
@@ -43,12 +48,35 @@ test("vendor staff can refresh and act on a shop order, and managers can edit th
     res.setHeader("Content-Type","application/json");
     const rows=(items:unknown[])=>res.end(JSON.stringify(req.headers.accept?.includes("vnd.pgrst.object") ? items[0] ?? null : items));
     switch(url.pathname) {
-      case "/auth/v1/user": return res.end(JSON.stringify(user));
+      case "/auth/v1/user": return res.end(JSON.stringify(req.headers.authorization==="Bearer local-student" ? student : user));
+      case "/rest/v1/rpc/campusbite_vendor_session": return res.end(JSON.stringify(registered));
       case "/rest/v1/vendor_access": return rows([{role,email:user.email,shop_id:shop,created_at:user.email_confirmed_at}]);
       case "/rest/v1/vendor_shops": return rows([{id:shop,name:"Campus Kitchen"}]);
       case "/rest/v1/commerce_stalls": return rows([store]);
       case "/rest/v1/commerce_menu": return rows(menu);
       case "/rest/v1/vendor_sales": return rows([]);
+      case "/rest/v1/rpc/campusbite_consume_attempt": return res.end(JSON.stringify(["pickup-availability-shop","student-checkout"].includes(body.p_bucket)));
+      case "/rest/v1/razorpay_environment": return rows([{mode:"test"}]);
+      case "/rest/v1/ordering_control": return rows([{paused:false}]);
+      case "/rest/v1/rpc/commerce_reserve": {
+        if (body.actor!==student.id || body.amount!==3000 || body.stall!==store.slug) return res.writeHead(400).end("{}");
+        const reservation={id:randomUUID(),fingerprint:body.signature,status:reservations.size===0 ? "expired" : "unpaid",
+          reserved_until:new Date(Date.now()+300_000).toISOString(),provider_order:null,provider_payment:null,amount_paise:body.amount};
+        reservations.set(body.request,reservation);
+        return res.end(JSON.stringify(reservation));
+      }
+      case "/rest/v1/commerce_orders": {
+        const request=url.searchParams.get("request_id")?.slice(3);
+        const id=url.searchParams.get("id")?.slice(3);
+        const reservation=request ? reservations.get(request) : Array.from(reservations.values()).find(r=>r.id===id);
+        if (req.method==="PATCH" && reservation) reservation.provider_order=body.provider_order;
+        return rows(reservation ? [reservation] : []);
+      }
+      case "/rest/v1/rpc/commerce_apply_razorpay_event":
+        if (body.kind!=="payment.captured" || body.payment_id!=="pay_CapturedTea" || body.gateway_order!=="order_Fixture" ||
+          body.amount!==3000 || body.currency!=="INR" || body.key_mode!=="test") return res.end("false");
+        studentCaptures++;
+        return res.end("true");
       case "/rest/v1/rpc/commerce_pickup_availability":
         if (availabilityDown) return res.writeHead(503).end("{}");
         if (body.stall!=="test-shop" || body.items?.[0]?.qty!==1 || body.items?.[0]?.price!==3000) return res.writeHead(400).end("{}");
@@ -93,6 +121,11 @@ test("vendor staff can refresh and act on a shop order, and managers can edit th
     await page.addInitScript(()=>{ const create = AudioContext.prototype.createOscillator;
       AudioContext.prototype.createOscillator=function(){ document.documentElement.dataset.sounds=String(Number(document.documentElement.dataset.sounds ?? 0)+1); return create.call(this); };
     });
+    await page.goto("/vendor/dashboard");
+    await expect(page).toHaveURL(/\/vendor\/sign-in$/);
+    expect((await page.request.get("/api/vendor/shops/"+shop+"/orders")).status()).toBe(403);
+    expect((await page.request.get("/api/vendor/shops/"+shop+"/events")).status()).toBe(401);
+    registered=true;
     await page.goto("/vendor/dashboard");
     await expect(page.getByRole("heading",{name:"Order board"})).toBeVisible();
     await expect(page.getByText(/Accept within \d+s/)).toBeVisible();
@@ -183,6 +216,27 @@ test("vendor staff can refresh and act on a shop order, and managers can edit th
     availabilityDown=false;
     await page.getByRole("button",{name:"Refresh availability"}).click();
     await expect(choices).toHaveCount(1);
+    await test.step("student checkout keeps an expired bag and requires a captured payment",async()=>{
+      const session={access_token:"local-student",refresh_token:"local-refresh",expires_at:Math.floor(Date.now()/1000)+3600,user:student};
+      await context.addCookies([{name:"campusbite-student-auth",value:"base64-"+Buffer.from(JSON.stringify(session)).toString("base64url"),url:"http://127.0.0.1:3109"}]);
+      const replies=["pay_AuthorizedTea","pay_CapturedTea"].map(payment=>({razorpay_payment_id:payment,
+        razorpay_signature:createHmac("sha256","student-payment-fixture").update("order_Fixture|"+payment).digest("hex")}));
+      await page.route("https://checkout.razorpay.com/v1/checkout.js",route=>route.fulfill({contentType:"text/javascript",
+        body:`const replies=${JSON.stringify(replies)}; window.Razorpay=class { constructor(options){this.options=options} open(){this.options.handler(replies.shift())} };`}));
+      await page.reload();
+      await choices.first().check();
+      const pay=page.getByRole("button",{name:/^Pay ·/});
+      await pay.click();
+      await expect(page.getByText(/checkout closed without a confirmed payment/)).toBeVisible();
+      await expect(page.getByText("1 × Mint tea")).toBeVisible();
+      await pay.click();
+      await expect(page.getByText(/Payment is awaiting confirmation/)).toBeVisible();
+      expect(studentCaptures).toBe(0);
+      await pay.click();
+      await expect(page).toHaveURL(/\/orders$/);
+      expect(studentCaptures).toBe(1);
+      expect(reservations.size).toBe(2);
+    });
     role="staff";
     await page.goto("/vendor/board?shop="+shop);
     await expect(page.getByRole("link",{name:"Earnings"})).toHaveCount(0);

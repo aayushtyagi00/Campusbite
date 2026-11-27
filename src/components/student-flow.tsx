@@ -184,9 +184,9 @@ export function StudentOrders({ history }: { history: StudentOrderHistory }) {
       const prior = previous.current.find(item => item.id === order.id);
       if (!prior) continue;
       if (preferences?.orderAlerts && prior.status !== order.status && order.status !== "unpaid")
-        updates.push(displayReference(order.id) + " · " + statuses[order.status]);
+        updates.push(displayReference(order) + " · " + statuses[order.status]);
       if (preferences?.refundAlerts && prior.refund !== order.refund)
-        updates.push(displayReference(order.id) + " · Refund " + order.refund.toLowerCase());
+        updates.push(displayReference(order) + " · Refund " + order.refund.toLowerCase());
     }
     previous.current = orders;
     if (updates.length) setAlerts(updates);
@@ -206,13 +206,13 @@ export function StudentOrders({ history }: { history: StudentOrderHistory }) {
     {notices}{!orders.length && <Empty title="No orders yet"><Link className="button" href="/">Explore campus stalls</Link></Empty>}
     <div className="stack order-history-grid">{orders.map(item => <button type="button" className="panel panel-pad stack order-card" key={item.id} onClick={() => select(item.id)}>
       <div className="row between"><strong>{item.name}</strong><Status tone="good">{item.status === "unpaid" ? (item.payment==="Failed" ? "Payment failed" : "Payment pending") : statuses[visibleStatus({ status: item.status, deadline: item.deadline }, now)]}</Status></div>
-      <div className="row between"><span>{displayReference(item.id)} · {dateLabel(item.placed)}</span><strong>{money(item.total)}</strong></div>
+      <div className="row between"><span>{displayReference(item)} · {dateLabel(item.placed)}</span><strong>{money(item.total)}</strong></div>
     </button>)}</div></div>;
   return <>{notices}<StudentOrderDetails key={order.id} order={order} now={now} close={() => select(null)} /></>;
 }
 
-function displayReference(id: string) {
-  return "CB-" + id.slice(0, 8).toUpperCase();
+function displayReference(order: StudentOrder) {
+  return order.reference ?? "CB-" + order.id.slice(0, 8).toUpperCase();
 }
 
 function StudentOrderDetails({ order, now, close }: { order: StudentOrder; now: number; close: () => void }) {
@@ -223,7 +223,7 @@ function StudentOrderDetails({ order, now, close }: { order: StudentOrder; now: 
   const seconds = now ? Math.max(0, Math.ceil((order.deadline - now) / 1000)) : 90;
   const refund = status === "expired" && order.payment === "Verified" && order.refund === "None" ? "Requested" : order.refund;
   return <div className="narrow transaction-page"><button type="button" className="back" onClick={close}><ArrowLeft size={17} /> Your orders</button>
-    <div className="page-heading"><p className="eyebrow">{displayReference(order.id)}</p><h1>{status === "unpaid" ? (order.payment==="Failed" ? "Payment failed" : "Payment pending") : statuses[status]}</h1><p>{order.name}</p></div>
+    <div className="page-heading"><p className="eyebrow">{displayReference(order)}</p><h1>{status === "unpaid" ? (order.payment==="Failed" ? "Payment failed" : "Payment pending") : statuses[status]}</h1><p>{order.name}</p></div>
     <div className="transaction-layout">
       <div className="transaction-column">
         <section className={`panel panel-pad stack ${status === "ready" ? "ready-panel" : ""}`}>

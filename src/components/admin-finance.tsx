@@ -2,6 +2,7 @@ import Link from "next/link";
 import { commerceDb } from "@/lib/commerce";
 import { money } from "@/lib/campus";
 import { Notice } from "./ui";
+import { retryReviewedWebhook } from "@/lib/admin-order-actions";
 
 const labels:Record<string,string>={capture:"Payment",refund:"Refund",extra_capture:"Extra payment",extra_refund:"Extra payment refunded"};
 
@@ -10,7 +11,8 @@ export async function AdminFinance({page}:{page:number}) {
   const size=25,from=(page-1)*size;
   const [entries,webhooks,runs,metrics]=await Promise.all([
     db.from("payment_journal").select("id,order_id,kind,payment,amount_paise,recorded_at").order("id",{ascending:false}).range(from,from+size),
-    db.from("payment_webhook_queue").select("event_id,payment,error,attempts,due").not("error","is",null).is("completed_at",null).order("due").limit(25),
+    db.from("payment_webhook_queue").select("event_id,payment,error,attempts,due").or("error.not.is.null,attempts.gte.12").is("completed_at",null)
+      .order("attempts",{ascending:false}).order("due").range(from,from+size),
     db.from("commerce_worker_runs").select("started_at,finished_at,outcome").order("started_at",{ascending:false}).limit(1),
     db.rpc("commerce_ops_metrics"),
   ]);
@@ -32,6 +34,12 @@ export async function AdminFinance({page}:{page:number}) {
     <p>{latest ? "Last worker run · "+latest.started_at+" · "+latest.outcome : "Waiting for the first scheduled worker run."}</p>
     <Link className="text-link" href="/admin/orders?view=exceptions">Orders requiring payment review</Link>
     {webhooks.data.length>0 && <h3>Unresolved webhook deliveries</h3>}
-    {webhooks.data.map(event=><p key={event.event_id}>{event.payment} · {event.error} · {event.attempts} scheduled attempts</p>)}
+    {webhooks.data.slice(0,size).map(event=><div key={event.event_id}>
+      <p>{event.payment} · {event.error || "Verification pending"} · {event.attempts} scheduled attempts</p>
+      {event.attempts>=12 && <form action={retryReviewedWebhook.bind(null,event.event_id)}>
+        <button className="button secondary">Retry after review</button>
+      </form>}
+    </div>)}
+    {webhooks.data.length>size && <Link className="text-link" href={"/admin/finance?page="+(page+1)}>More unresolved deliveries</Link>}
   </section></div>;
 }
